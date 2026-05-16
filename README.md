@@ -2,8 +2,8 @@
 
 A single static binary that bundles seven engineering tools under one command. No runtime dependencies. No agents. No cloud sign-up.
 
-**Author:** Anna Veretennykova · [www.annave.tech](https://www.annave.tech)
-**License:** Apache 2.0
+* **Author:** Anna Veretennykova · [www.annave.tech](https://www.annave.tech)
+* **License:** Apache 2.0
 
 ---
 
@@ -11,7 +11,7 @@ A single static binary that bundles seven engineering tools under one command. N
 
 Engineering teams accumulate a pile of one-off scripts: a Bash file that greps the logs, a Python script that pings the health endpoints, a Makefile target that runs `helm list`. They work until they don't — when the machine that wrote them is gone, or when the Python version changes, or when the script silently does the wrong thing.
 
-ANNAVE CLI replaces that pile with a single binary compiled from typed Go. Every tool is consistent: the same `--format` flag, the same error structure, the same output that pipes cleanly into `jq`.
+ANNÁVE CLI replaces that pile with a single binary compiled from typed Go. Every tool is consistent: the same `--format` flag, the same error structure, the same output that pipes cleanly into `jq`.
 
 | Tool | What it does |
 |---|---|
@@ -303,7 +303,7 @@ See `docs/CONFIGURATION.md` for every key and its default value.
 
 ## Architecture
 
-ANNAVE CLI uses **hexagonal architecture** (ports and adapters). Each module has a domain model, a port interface, and one or more adapter implementations. The CLI layer is thin — it parses flags, calls the port, and formats the output. Nothing in the domain core knows about Cobra or terminal formatting.
+ANNÁVE CLI uses **hexagonal architecture** (ports and adapters). Each module has a domain model, a port interface, and one or more adapter implementations. The CLI layer is thin — it parses flags, calls the port, and formats the output. Nothing in the domain core knows about Cobra or terminal formatting.
 
 See `docs/ARCHITECTURE.md` for the full package map and instructions for adding a new module.
 
@@ -312,4 +312,3 @@ See `docs/ARCHITECTURE.md` for the full package map and instructions for adding 
 ## Third-party attributions
 
 See [NOTICE](NOTICE) for the full list of open-source components included in this project.
-# annave-cli-golang

@@ -1,0 +1,23 @@
+# ANNÁVE CLI — User-Facing Error Messages
+#
+# All user-facing error messages are defined here, keyed by error code.
+# Error codes follow the pattern ERR_SLUG.
+#   ERR  = it is an error
+#   SLUG = what went wrong, self-documenting, no sequence number needed
+#
+# The code values (ERR_*) are referenced in Go source — do not rename them.
+# Only the message strings are safe to edit.
+#
+# In plain output, messages appear as:
+#   [stage/ERR_CODE] message text
+# In JSON output, they appear as:
+#   {"code": "ERR_CODE", "stage": "stage", "message": "message text"}
+
+errors:
+  ERR_NOT_IMPLEMENTED: "this module is in development and not yet available"
+  ERR_INVALID_INPUT:   "invalid input provided"
+  ERR_IO_FAILURE:      "failed to read or write data"
+  ERR_TIMEOUT:         "operation timed out"
+  ERR_PERMISSION:      "permission denied"
+  ERR_NOT_FOUND:       "resource not found"
+  ERR_PARSE_FAILED:    "failed to parse input"

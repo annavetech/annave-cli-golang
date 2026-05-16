@@ -1,0 +1,35 @@
+ANNÁVE CLI
+Copyright 2026 Anna Veretennykova <contact@annave.tech>
+https://www.annave.tech
+
+This product includes software from the following open-source projects:
+
+  cobra
+  Copyright (c) 2013 Steve Francia
+  License: Apache 2.0
+  Source:  https://github.com/spf13/cobra
+
+  aws-sdk-go-v2
+  Copyright (c) 2015 Amazon.com, Inc.
+  License: Apache 2.0
+  Source:  https://github.com/aws/aws-sdk-go-v2
+
+  client-go
+  Copyright (c) The Kubernetes Authors
+  License: Apache 2.0
+  Source:  https://github.com/kubernetes/client-go
+
+  k8s.io/api, k8s.io/apimachinery
+  Copyright (c) The Kubernetes Authors
+  License: Apache 2.0
+  Source:  https://github.com/kubernetes/kubernetes
+
+  sigs.k8s.io/yaml
+  Copyright (c) 2014 Sam Ghods
+  License: MIT and BSD 3-Clause
+  Source:  https://github.com/kubernetes-sigs/yaml
+
+  gopkg.in/yaml.v3
+  Copyright (c) 2011-2019 Canonical Ltd
+  License: Apache 2.0 and MIT
+  Source:  https://github.com/go-yaml/yaml
