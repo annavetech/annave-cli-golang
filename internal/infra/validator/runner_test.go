@@ -1,6 +1,6 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package validator
 
 import (
@@ -21,7 +21,7 @@ func TestToolCommandAllowsOnlyHelmAndTerraform(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, err := toolCommand(tt.name, []string{"lint", "a b"})
+			cmd, err := toolCommand(t.Context(), tt.name, []string{"lint", "a b"})
 			if tt.wantErr {
 				if err == nil || !strings.Contains(err.Error(), "refusing to run") {
 					t.Fatalf("toolCommand(%q) error = %v, want refusal", tt.name, err)
@@ -35,5 +35,15 @@ func TestToolCommandAllowsOnlyHelmAndTerraform(t *testing.T) {
 				t.Fatalf("Args = %q, want the arguments unchanged after the name", cmd.Args)
 			}
 		})
+	}
+}
+
+func TestToolCommandIsBoundToContext(t *testing.T) {
+	cmd, err := toolCommand(t.Context(), "helm", []string{"list"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd.Cancel == nil {
+		t.Fatal("helm and terraform must be killed when the context ends")
 	}
 }

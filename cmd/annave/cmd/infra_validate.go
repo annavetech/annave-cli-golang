@@ -1,10 +1,9 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -64,7 +63,7 @@ func runInfraValidate(cmd *cobra.Command, args []string) error {
 	opts := port.ValidateOptions{Type: infraValidateType}
 
 	v := validator.New()
-	result, err := v.Validate(context.Background(), target, opts)
+	result, err := v.Validate(cmd.Context(), target, opts)
 	if err != nil {
 		return err
 	}
@@ -73,7 +72,13 @@ func runInfraValidate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printValidationResult(p, result)
-	return p.Err()
+	if err := p.Err(); err != nil {
+		return err
+	}
+	if !result.Passed {
+		return errProblemsFound
+	}
+	return nil
 }
 
 func printValidationResult(p *output.Printer, result *domain.ValidationResult) {

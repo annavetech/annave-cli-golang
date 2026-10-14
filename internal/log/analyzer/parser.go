@@ -1,10 +1,11 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package analyzer
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -204,10 +205,13 @@ const maxLogLineBytes = 1024 * 1024
 
 // parseLines reads up to maxLines from r and returns all successfully parsed entries.
 // Lines over maxLogLineBytes are cut to that length and counted in truncated.
-func parseLines(r io.Reader, maxLines int) (entries []domain.LogEntry, format domain.LogFormat, totalLines, parseErrors, truncated int, err error) {
+func parseLines(ctx context.Context, r io.Reader, maxLines int) (entries []domain.LogEntry, format domain.LogFormat, totalLines, parseErrors, truncated int, err error) {
 	br := bufio.NewReaderSize(r, maxLogLineBytes)
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return nil, "", 0, 0, 0, err
+		}
 		chunk, readErr := br.ReadSlice('\n')
 		line := string(chunk)
 		if readErr == bufio.ErrBufferFull {

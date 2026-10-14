@@ -1,10 +1,9 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -62,20 +61,23 @@ func runDocSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	s := searcher.New()
-	results, err := s.Search(context.Background(), query, opts)
+	results, err := s.Search(cmd.Context(), query, opts)
 	if err != nil {
 		return err
 	}
 
 	if len(results) == 0 {
-		p.Linef("No results for %q in %s", raw, docSearchPath)
+		if p.Format() == output.FormatJSON {
+			p.JSON([]domain.SearchResult{})
+		} else {
+			p.Linef("No results for %q in %s", raw, docSearchPath)
+		}
 		return p.Err()
 	}
 
 	if docSearchOpen {
 		top := results[0]
-		p.Linef("Opening: %s (line %d)", top.File.RelPath, top.Line)
-		if err := p.Err(); err != nil {
+		if err := docNotice(cmd, p, fmt.Sprintf("Opening: %s (line %d)", top.File.RelPath, top.Line)); err != nil {
 			return err
 		}
 		return searcher.OpenInEditor(top.File.Path, top.Line)
@@ -83,6 +85,18 @@ func runDocSearch(cmd *cobra.Command, args []string) error {
 
 	printDocResults(p, results, query)
 	return p.Err()
+}
+
+// docNotice prints msg to stdout, or to stderr in JSON mode so stdout stays valid JSON.
+func docNotice(cmd *cobra.Command, p *output.Printer, msg string) error {
+	if p.Format() != output.FormatJSON {
+		p.Line(msg)
+		return p.Err()
+	}
+	if _, err := fmt.Fprintln(cmd.ErrOrStderr(), msg); err != nil {
+		return fmt.Errorf("write notice: %w", err)
+	}
+	return nil
 }
 
 func printDocResults(p *output.Printer, results []domain.SearchResult, query domain.SearchQuery) {

@@ -1,9 +1,11 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package cmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,7 +39,7 @@ func init() {
 	logAnalyzeCmd.Flags().BoolVar(&logAnalyzeStdin, "stdin", false, "read from stdin instead of a file")
 	logAnalyzeCmd.Flags().StringVar(&logAnalyzeFormat, "format", "plain", "output format: plain, json, table")
 	logAnalyzeCmd.Flags().StringVar(&logAnalyzeSince, "since", "", "only include entries after this time (e.g. 1h, 30m, or RFC3339)")
-	logAnalyzeCmd.Flags().StringVar(&logAnalyzeLevel, "level", "", "minimum log level: debug, info, warn, error")
+	logAnalyzeCmd.Flags().StringVar(&logAnalyzeLevel, "level", "", "minimum log level: debug, info, warn, error, critical")
 }
 
 func runLogAnalyze(cmd *cobra.Command, args []string) (retErr error) {
@@ -47,9 +49,17 @@ func runLogAnalyze(cmd *cobra.Command, args []string) (retErr error) {
 	}
 	p := output.New(outFmt)
 
-	var r io.Reader
+	minLevel, err := analyzer.ParseLevel(logAnalyzeLevel)
+	if err != nil {
+		return newUsageError(cmd, err)
+	}
+	if !logAnalyzeStdin && len(args) == 0 {
+		return newUsageError(cmd, errors.New("no input: pass a file, \"-\" or --stdin"))
+	}
+
+	in := os.Stdin
 	filename := "<stdin>"
-	if !logAnalyzeStdin && len(args) > 0 {
+	if !logAnalyzeStdin && args[0] != "-" {
 		filename = args[0]
 		f, err := os.Open(filename)
 		if err != nil {
@@ -60,9 +70,7 @@ func runLogAnalyze(cmd *cobra.Command, args []string) (retErr error) {
 				retErr = fmt.Errorf("close %q: %w", filename, err)
 			}
 		}()
-		r = f
-	} else {
-		r = os.Stdin
+		in = f
 	}
 
 	var since time.Time
@@ -75,17 +83,77 @@ func runLogAnalyze(cmd *cobra.Command, args []string) (retErr error) {
 
 	opts := port.AnalyzeOptions{
 		Since:    since,
-		MinLevel: logAnalyzeLevel,
+		MinLevel: minLevel,
 	}
 
-	a := analyzer.New()
-	report, err := a.Analyze(r, filename, opts)
+	report, err := analyzeInput(cmd.Context(), in, filename, opts)
 	if err != nil {
 		return err
 	}
 
 	printReport(p, report)
-	return p.Err()
+	if err := p.Err(); err != nil {
+		return err
+	}
+	if len(report.Findings) > 0 {
+		return errProblemsFound
+	}
+	return nil
+}
+
+// deadlineReader is an input whose blocked reads can be ended by a deadline.
+type deadlineReader interface {
+	io.Reader
+	SetReadDeadline(t time.Time) error
+}
+
+// analyzeInput runs the analysis and returns ctx.Err() as soon as ctx ends, even mid-read.
+func analyzeInput(ctx context.Context, r io.Reader, filename string, opts port.AnalyzeOptions) (*domain.AnalysisReport, error) {
+	if dr, ok := r.(deadlineReader); ok {
+		err := dr.SetReadDeadline(time.Time{})
+		if err == nil {
+			return analyzeWithDeadline(ctx, dr, filename, opts)
+		}
+		if !errors.Is(err, os.ErrNoDeadline) {
+			return nil, fmt.Errorf("prepare reading %q: %w", filename, err)
+		}
+	}
+	// Without deadlines (such as a terminal), the read runs in a goroutine that is
+	// abandoned on cancel and ends when the process exits.
+	type outcome struct {
+		report *domain.AnalysisReport
+		err    error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		report, err := analyzer.New().Analyze(ctx, r, filename, opts)
+		done <- outcome{report, err}
+	}()
+	select {
+	case o := <-done:
+		return o.report, o.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// analyzeWithDeadline sets a read deadline when ctx ends so a blocked read returns.
+func analyzeWithDeadline(ctx context.Context, dr deadlineReader, filename string, opts port.AnalyzeOptions) (*domain.AnalysisReport, error) {
+	deadlineErr := make(chan error, 1)
+	stopDeadline := context.AfterFunc(ctx, func() { deadlineErr <- dr.SetReadDeadline(time.Now()) })
+	report, err := analyzer.New().Analyze(ctx, dr, filename, opts)
+	if !stopDeadline() {
+		if derr := <-deadlineErr; derr != nil {
+			return nil, errors.Join(ctx.Err(), fmt.Errorf("stop reading %q: %w", filename, derr))
+		}
+	}
+	if err != nil {
+		if errors.Is(err, os.ErrDeadlineExceeded) && ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, err
+	}
+	return report, nil
 }
 
 func printReport(p *output.Printer, report *domain.AnalysisReport) {

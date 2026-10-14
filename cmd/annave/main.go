@@ -1,10 +1,14 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package main
 
-import "annave.tech/cli/cmd/annave/cmd"
+import (
+	"os"
+
+	"annave.tech/cli/cmd/annave/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	os.Exit(cmd.Execute())
 }

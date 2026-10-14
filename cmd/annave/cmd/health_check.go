@@ -1,6 +1,6 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package cmd
 
 import (
@@ -75,7 +75,7 @@ func runHealthCheck(cmd *cobra.Command, args []string) error {
 	} else {
 		globalTimeout = timeout + 5*time.Second
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), globalTimeout)
+	ctx, cancel := context.WithTimeout(cmd.Context(), globalTimeout)
 	defer cancel()
 
 	// checkErr reports close failures; the report is still printed before it is returned.
@@ -94,7 +94,13 @@ func runHealthCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	printHealthReport(p, report)
-	return errors.Join(checkErr, p.Err())
+	if err := errors.Join(checkErr, p.Err()); err != nil {
+		return err
+	}
+	if report.Down > 0 {
+		return errProblemsFound
+	}
+	return nil
 }
 
 func buildHealthReport(results []domain.HealthResult) *domain.HealthReport {

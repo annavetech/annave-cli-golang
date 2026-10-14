@@ -3,7 +3,7 @@ class Annave < Formula
   desc "ANNÁVE developer tools — log analysis, health checks, docs, and cleanup"
   homepage "https://www.annave.tech"
   version "0.1.0"
-  license "Apache-2.0"
+ license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?

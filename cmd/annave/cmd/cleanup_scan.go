@@ -1,6 +1,6 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package cmd
 
 import (
@@ -57,7 +57,7 @@ func runCleanupScan(cmd *cobra.Command, args []string) error {
 	}
 
 	timeout := time.Duration(config.App.Limits.Cleanup.TimeoutSeconds) * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(cmd.Context(), timeout)
 	defer cancel()
 
 	s := scanner.New()
@@ -70,7 +70,13 @@ func runCleanupScan(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printCleanupPlan(p, plan)
-	return p.Err()
+	if err := p.Err(); err != nil {
+		return err
+	}
+	if len(plan.Resources) > 0 {
+		return errProblemsFound
+	}
+	return nil
 }
 
 func printCleanupPlan(p *output.Printer, plan *domain.CleanupPlan) {

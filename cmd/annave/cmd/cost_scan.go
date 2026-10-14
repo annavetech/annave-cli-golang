@@ -1,10 +1,9 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"annave.tech/cli/internal/cost/analyzer"
 	"annave.tech/cli/internal/cost/domain"
 	"annave.tech/cli/internal/cost/port"
-	shared "annave.tech/cli/internal/shared/errors"
 	"annave.tech/cli/internal/shared/output"
 )
 
@@ -71,19 +69,19 @@ func runCostScan(cmd *cobra.Command, args []string) error {
 	}
 
 	a := analyzer.New()
-	report, err := a.Analyze(context.Background(), opts)
+	report, err := a.Analyze(cmd.Context(), opts)
 	if err != nil {
-		// GCP/Azure not-implemented errors: print a friendly notice, not an error.
-		if ae, ok := err.(*shared.AnnaveError); ok && ae.Code == shared.ErrCodeNotImplemented {
-			p.Linef("\n  %s\n", ae.Message)
-			p.Line("  Follow updates at https://www.annave.tech\n")
-			return p.Err()
-		}
 		return err
 	}
 
 	printCostReport(p, report)
-	return p.Err()
+	if err := p.Err(); err != nil {
+		return err
+	}
+	if len(report.Anomalies) > 0 {
+		return errProblemsFound
+	}
+	return nil
 }
 
 func printCostReport(p *output.Printer, report *domain.CostReport) {

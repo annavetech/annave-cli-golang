@@ -1,10 +1,13 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package analyzer
 
 import (
+	"context"
+	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"annave.tech/cli/internal/log/domain"
@@ -18,13 +21,13 @@ type LogAnalyzer struct{}
 // New returns a ready-to-use LogAnalyzer.
 func New() *LogAnalyzer { return &LogAnalyzer{} }
 
-func (a *LogAnalyzer) Analyze(r io.Reader, filename string, opts port.AnalyzeOptions) (*domain.AnalysisReport, error) {
+func (a *LogAnalyzer) Analyze(ctx context.Context, r io.Reader, filename string, opts port.AnalyzeOptions) (*domain.AnalysisReport, error) {
 	maxLines := opts.MaxLines
 	if maxLines == 0 {
 		maxLines = config.App.Limits.Log.MaxLines
 	}
 
-	entries, format, totalLines, parseErrors, truncated, err := parseLines(r, maxLines)
+	entries, format, totalLines, parseErrors, truncated, err := parseLines(ctx, r, maxLines)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +83,17 @@ func filterEntries(entries []domain.LogEntry, since time.Time, minLevel string) 
 		result = append(result, e)
 	}
 	return result
+}
+
+// ParseLevel normalizes a --level value; "warning" is accepted as warn and "" means no filter.
+func ParseLevel(s string) (string, error) {
+	switch level := strings.ToLower(s); level {
+	case "", "debug", "info", "warn", "error", "critical":
+		return level, nil
+	case "warning":
+		return "warn", nil
+	}
+	return "", fmt.Errorf("unknown level %q: use debug, info, warn, error, or critical", s)
 }
 
 // levelRank maps a level string to a numeric rank for comparison.

@@ -76,12 +76,10 @@ annave health check \
 
 In `--chain` mode, the command stops at the first failure. If postgres is down, redis and the API are not checked — the assumption is they depend on the database.
 
-Exit in CI if any target is down:
+Fail a CI step if any target is down. The command exits `2` when a target is down and `1` on an error:
 
 ```bash
-annave health check https://api.example.com --format json \
-  | jq -e '.down == 0' > /dev/null \
-  || { echo "health check failed"; exit 1; }
+annave health check https://api.example.com
 ```
 
 **What to watch:**
@@ -213,14 +211,12 @@ Or if you already have the JSON plan:
 annave infra validate plan.json --format table
 ```
 
-In CI:
+In CI, where the command exits `2` when the validation fails:
 
 ```bash
 terraform plan -out=plan.tfplan
 terraform show -json plan.tfplan > plan.json
-annave infra validate plan.json --format json \
-  | jq -e '.passed == true' > /dev/null \
-  || { echo "infra validation failed"; exit 1; }
+annave infra validate plan.json
 ```
 
 Lint a Helm chart before packaging:
@@ -270,4 +266,4 @@ annave cost scan --format json | jq -r '.records[] | [.service, .amount] | @csv'
 - For accounts with less than 14 days of data, `GetCostForecast` returns an error. The forecast is silently omitted — the cost data is still returned.
 - The Cost Explorer API is global. It does not use the AWS region set in `~/.aws/config`. If you have regional credential profiles, the default profile is used unless `AWS_PROFILE` is set.
 - Cost Explorer charges $0.01 per API request. Each `annave cost scan` run makes 2 requests (cost data + forecast). Running it in a tight loop will accumulate charges.
-- GCP and Azure display a notice that they are not yet implemented. The exit code is still `0`.
+- GCP and Azure are not yet implemented. The command prints an error and exits `1`.

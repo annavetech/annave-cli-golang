@@ -55,7 +55,7 @@ go test -race ./...
   ```go
   // Copyright 2026 Anna Veretennykova
   //
-  // SPDX-License-Identifier: Apache-2.0
+  // SPDX-License-Identifier: MIT
   ```
 - Comments only when the reason is non-obvious — not what the code does, but why it does it that way.
 - No test file uses mocks for the filesystem, Kubernetes API, or AWS SDK. Tests call the domain logic directly or use real fixtures. For adapter tests that require external APIs (AWS Cost Explorer, live k8s cluster), use build tags or skip when the dependency is unavailable.

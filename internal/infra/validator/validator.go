@@ -1,6 +1,6 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package validator
 
 import (
@@ -21,7 +21,7 @@ type InfraValidator struct {
 
 func New() *InfraValidator { return &InfraValidator{run: execRunner{}} }
 
-func (v *InfraValidator) Validate(_ context.Context, target string, opts port.ValidateOptions) (*domain.ValidationResult, error) {
+func (v *InfraValidator) Validate(ctx context.Context, target string, opts port.ValidateOptions) (*domain.ValidationResult, error) {
 	vtype := opts.Type
 	if vtype == "" {
 		vtype = detectType(target)
@@ -29,9 +29,9 @@ func (v *InfraValidator) Validate(_ context.Context, target string, opts port.Va
 
 	switch vtype {
 	case string(domain.ValidateTypeTerraform):
-		return validateTerraform(v.run, target)
+		return validateTerraform(ctx, v.run, target)
 	case string(domain.ValidateTypeHelm):
-		return validateHelm(v.run, target)
+		return validateHelm(ctx, v.run, target)
 	case string(domain.ValidateTypeK8s):
 		return validateK8sYAML(target)
 	default:

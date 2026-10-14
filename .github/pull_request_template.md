@@ -27,5 +27,5 @@ Closes #
 
 - [ ] This change does not print, log, or store a secret value found during a scan.
 
-The contribution is licensed under the Apache License 2.0 of this repository
+The contribution is licensed under the MIT License of this repository
 (see [LICENSE](../LICENSE)), and [docs/CONTRIBUTING.md](../docs/CONTRIBUTING.md) has been read.

@@ -1,9 +1,10 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package port
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -19,5 +20,5 @@ type AnalyzeOptions struct {
 
 // Analyzer reads a log stream and returns a ranked findings report.
 type Analyzer interface {
-	Analyze(r io.Reader, filename string, opts AnalyzeOptions) (*domain.AnalysisReport, error)
+	Analyze(ctx context.Context, r io.Reader, filename string, opts AnalyzeOptions) (*domain.AnalysisReport, error)
 }

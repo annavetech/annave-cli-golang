@@ -1,9 +1,10 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package analyzer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -23,7 +24,7 @@ func TestParseLinesContinuesAfterOverlongLine(t *testing.T) {
 		fmt.Fprintf(&b, "ERROR after %d\n", i)
 	}
 
-	entries, _, total, _, truncated, err := parseLines(strings.NewReader(b.String()), 0)
+	entries, _, total, _, truncated, err := parseLines(t.Context(), strings.NewReader(b.String()), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +43,7 @@ func TestParseLinesContinuesAfterOverlongLine(t *testing.T) {
 }
 
 func TestParseLinesLastLineWithoutNewline(t *testing.T) {
-	entries, _, total, _, truncated, err := parseLines(strings.NewReader("ERROR a\r\nERROR b"), 0)
+	entries, _, total, _, truncated, err := parseLines(t.Context(), strings.NewReader("ERROR a\r\nERROR b"), 0)
 	if err != nil || total != 2 || truncated != 0 || len(entries) != 2 || entries[0].Message != "ERROR a" {
 		t.Fatalf("entries=%+v total=%d truncated=%d err=%v", entries, total, truncated, err)
 	}
@@ -50,8 +51,17 @@ func TestParseLinesLastLineWithoutNewline(t *testing.T) {
 
 func TestAnalyzeReturnsReadError(t *testing.T) {
 	readErr := errors.New("disk failure")
-	_, err := New().Analyze(iotest.ErrReader(readErr), "x.log", port.AnalyzeOptions{})
+	_, err := New().Analyze(t.Context(), iotest.ErrReader(readErr), "x.log", port.AnalyzeOptions{})
 	if !errors.Is(err, readErr) {
 		t.Fatalf("want the read error, got %v", err)
+	}
+}
+
+func TestAnalyzeStopsWhenContextEnds(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err := New().Analyze(ctx, strings.NewReader("ERROR a\nERROR b\n"), "app.log", port.AnalyzeOptions{})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Analyze error = %v, want context.Canceled", err)
 	}
 }
