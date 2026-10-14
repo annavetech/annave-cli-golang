@@ -1,0 +1,30 @@
+# CODEOWNERS: reviewed by GitHub on every PR that touches a matched path.
+# Auto-requests review only. It does not gate merge, because a solo maintainer
+# cannot review their own PR, so this is never turned into a required review.
+
+# Default owner for anything not matched below.
+* @annaveretennykova
+
+# The annave command and its subcommands.
+/cmd/ @annaveretennykova
+
+# One package per command module.
+/internal/log/ @annaveretennykova
+/internal/health/ @annaveretennykova
+/internal/doc/ @annaveretennykova
+/internal/cleanup/ @annaveretennykova
+/internal/security/ @annaveretennykova
+/internal/infra/ @annaveretennykova
+/internal/cost/ @annaveretennykova
+
+# Shared errors, output, and embedded config.
+/internal/shared/ @annaveretennykova
+
+# Docs and onboarding.
+/docs/ @annaveretennykova
+*.md @annaveretennykova
+
+# Repo automation and release packaging.
+/.github/ @annaveretennykova
+/scripts/ @annaveretennykova
+/homebrew/ @annaveretennykova

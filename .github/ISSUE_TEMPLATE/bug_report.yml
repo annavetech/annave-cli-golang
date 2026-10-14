@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in the annave CLI is broken or behaves differently than documented.
+title: "[bug]: "
+labels: ["kind/bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What was the expected behavior?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The exact command, flags, and input used. Remove any secrets or credentials first.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - "log (annave log analyze)"
+        - "health (annave health check)"
+        - "doc (annave doc search)"
+        - "cleanup (annave cleanup scan)"
+        - "security (annave security audit)"
+        - "infra (annave infra validate)"
+        - "cost (annave cost scan)"
+        - "cli (flags, output formats, error messages)"
+        - "docs"
+        - "other"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Go version, and CLI version (see `annave version`).
+    validations:
+      required: false
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?
+    validations:
+      required: false
