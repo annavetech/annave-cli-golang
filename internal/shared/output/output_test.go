@@ -65,3 +65,16 @@ func TestPrinterKeepsFirstWriteError(t *testing.T) {
 		})
 	}
 }
+
+func TestSectionUnderlineMatchesTitleWidth(t *testing.T) {
+	var buf bytes.Buffer
+	p := &Printer{out: &buf, errOut: &buf, format: FormatPlain}
+	p.Section("Café: Señor")
+	if err := p.Err(); err != nil {
+		t.Fatal(err)
+	}
+	want := "\nCafé: Señor\n-----------\n"
+	if got := buf.String(); got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}

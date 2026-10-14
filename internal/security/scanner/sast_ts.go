@@ -6,8 +6,8 @@ package scanner
 import (
 	"context"
 
-	"annave.tech/cli/internal/security/domain"
-	"annave.tech/cli/internal/security/scanner/rules"
+	"github.com/annavetech/tend/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/scanner/rules"
 )
 
 var tsRules = []rules.Rule{
@@ -54,7 +54,7 @@ var tsRules = []rules.Rule{
 		Pattern:   rules.MustCompile(`(?i)localStorage\.setItem\s*\([^,]*(?:token|password|secret|auth|key)`),
 		FileExts:  []string{".ts", ".tsx", ".js", ".jsx"},
 		Sensitive: true,
-		Remediation: "Do not store sensitive credentials in localStorage — it is accessible to " +
+		Remediation: "Do not store sensitive credentials in localStorage, because it is accessible to " +
 			"any JavaScript on the page. Use httpOnly cookies or in-memory state instead.",
 	},
 }

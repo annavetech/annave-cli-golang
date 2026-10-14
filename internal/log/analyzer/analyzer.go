@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"annave.tech/cli/internal/log/domain"
-	"annave.tech/cli/internal/log/port"
-	"annave.tech/cli/internal/shared/config"
+	"github.com/annavetech/tend/internal/log/domain"
+	"github.com/annavetech/tend/internal/log/port"
+	"github.com/annavetech/tend/internal/shared/config"
 )
 
 // LogAnalyzer implements port.Analyzer.

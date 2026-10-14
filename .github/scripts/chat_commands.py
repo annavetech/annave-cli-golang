@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""annave CLI chat-ops (issue_comment: created, restricted to PR comments).
+"""tend chat-ops (issue_comment: created, restricted to PR comments).
 Handles /lgtm, /approve, /hold, /unhold, /ok-to-test; only /ok-to-test excludes the PR's author."""
 
 import json

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""annave CLI auto-assign (issues: opened, pull_request_target: opened).
+"""tend auto-assign (issues: opened, pull_request_target: opened).
 Assigns an issue to the maintainer and a PR to its own author. Always exits 0."""
 
 import json

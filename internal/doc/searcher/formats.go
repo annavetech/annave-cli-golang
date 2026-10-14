@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"annave.tech/cli/internal/doc/domain"
+	"github.com/annavetech/tend/internal/doc/domain"
 )
 
 // supportedFormats maps lowercase file extensions to DocFormat.

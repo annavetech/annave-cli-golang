@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"annave.tech/cli/internal/infra/domain"
-	"annave.tech/cli/internal/infra/port"
+	"github.com/annavetech/tend/internal/infra/domain"
+	"github.com/annavetech/tend/internal/infra/port"
 )
 
 //go:embed testdata

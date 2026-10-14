@@ -1,4 +1,4 @@
-"""Shared GitHub REST API helper for the annave CLI's repo-automation scripts.
+"""Shared GitHub REST API helper for the tend repo-automation scripts.
 GITHUB_TOKEN is read from the environment and never logged or printed."""
 
 import json

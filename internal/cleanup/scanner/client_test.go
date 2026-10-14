@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"annave.tech/cli/internal/cleanup/port"
+	"github.com/annavetech/tend/internal/cleanup/port"
 )
 
 func writeKubeconfig(t *testing.T, server string) string {

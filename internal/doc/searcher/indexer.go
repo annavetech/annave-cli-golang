@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"annave.tech/cli/internal/doc/domain"
-	"annave.tech/cli/internal/doc/port"
-	"annave.tech/cli/internal/shared/config"
+	"github.com/annavetech/tend/internal/doc/domain"
+	"github.com/annavetech/tend/internal/doc/port"
+	"github.com/annavetech/tend/internal/shared/config"
 )
 
 // DocSearcher implements port.Searcher.

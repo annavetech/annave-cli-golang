@@ -8,7 +8,7 @@ import (
 	"io"
 	"time"
 
-	"annave.tech/cli/internal/log/domain"
+	"github.com/annavetech/tend/internal/log/domain"
 )
 
 // AnalyzeOptions controls filtering applied before analysis.

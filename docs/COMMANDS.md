@@ -1,9 +1,7 @@
 <!--
-title:       ANNÁVE CLI — Command Reference
+title:       tend: Command Reference
 description: Full reference for every command, every flag, output format examples,
              and exit codes.
-author:      Anna Veretennykova
-website:     www.annave.tech
 version:     0.1.0
 created:     2026-05-16
 updated:     2026-05-16
@@ -19,25 +17,25 @@ All commands follow the same conventions:
 
 ---
 
-## `annave version`
+## `tend version`
 
 Print the binary version.
 
 ```
-annave version
+tend version
 ```
 
 Output:
 ```
-annave 0.1.0
+tend version 0.2.0
 ```
 
 ---
 
-## `annave log analyze`
+## `tend log analyze`
 
 ```
-annave log analyze [file] [flags]
+tend log analyze [file] [flags]
 ```
 
 Analyze a log file for errors, spikes, and repeated patterns.
@@ -51,7 +49,7 @@ Analyze a log file for errors, spikes, and repeated patterns.
 |---|---|---|---|
 | `--stdin` | bool | false | read from stdin instead of a file |
 | `--format` | string | plain | output format: plain, json, table |
-| `--since` | string | — | only include entries after this time |
+| `--since` | string | none | only include entries after this time |
 | `--level` | string | none | minimum log level: debug, info, warn, error, critical (`warning` is accepted as warn; any other value is an error) |
 
 `--since` accepts a Go duration (`1h`, `30m`, `2h30m`), an RFC3339 timestamp (`2026-05-16T10:00:00Z`), or a date (`2026-05-16`).
@@ -61,22 +59,22 @@ Analyze a log file for errors, spikes, and repeated patterns.
 Lines longer than 1 MiB are cut to their first 1 MiB and reading continues. The count is shown as `truncated lines` in plain output and `truncated_lines` in JSON output. A read error ends the command with an error.
 
 **What it detects:**
-- Repeated error patterns — messages that appear 3 or more times
-- Time spikes — minutes with 3× the rolling average error rate
-- Message clusters — normalised duplicates grouped by template
+- Repeated error patterns: messages that appear 3 or more times
+- Time spikes: minutes with 3x the rolling average error rate
+- Message clusters: normalised duplicates grouped by template
 
 **Plain output:**
 ```
-  Log analysis — /var/log/app.log
+  Log analysis: /var/log/app.log
   format          json
   lines parsed    48231 / 48231
-  time range      2026-05-15 08:00:01 → 2026-05-16 07:59:58
+  time range      2026-05-15 08:00:01 to 2026-05-16 07:59:58
 
   3 finding(s):
 
-  [1] CRITICAL  Spike detected at 2026-05-15 14:32 — 847 errors in 1 minute (avg 12/min)
+  [1] CRITICAL  Spike detected at 2026-05-15 14:32, 847 errors in 1 minute (avg 12/min)
            top message: connection refused: redis:6379
-  [2] HIGH     Repeated pattern (124×): failed to acquire database lock
+  [2] HIGH     Repeated pattern (124x): failed to acquire database lock
   [3] MEDIUM   Message cluster (38 variants): timeout after [N]ms waiting for [TOKEN]
 ```
 
@@ -92,7 +90,7 @@ Lines longer than 1 MiB are cut to their first 1 MiB and reading continues. The 
     {
       "rank": 1,
       "severity": "critical",
-      "summary": "Spike detected at 2026-05-15 14:32 — 847 errors in 1 minute",
+      "summary": "Spike detected at 2026-05-15 14:32, 847 errors in 1 minute",
       "detail": "top message: connection refused: redis:6379",
       "count": 847
     }
@@ -104,16 +102,16 @@ Lines longer than 1 MiB are cut to their first 1 MiB and reading continues. The 
 
 ---
 
-## `annave health check`
+## `tend health check`
 
 ```
-annave health check [targets...] [flags]
+tend health check [targets...] [flags]
 ```
 
 Check uptime and latency of one or more services.
 
 **Arguments:**
-- `targets` — one or more target URIs (required).
+- `targets`: one or more target URIs (required).
 
 **Flags:**
 
@@ -127,7 +125,7 @@ Check uptime and latency of one or more services.
 
 | Input | Check type |
 |---|---|
-| `https://...` or `http://...` | HTTP — expects 2xx status |
+| `https://...` or `http://...` | HTTP (expects a 2xx status) |
 | `tcp://host:port` | TCP port connectivity |
 | `dns://host` | DNS resolution |
 | `host:port` | TCP (auto-detected) |
@@ -135,12 +133,12 @@ Check uptime and latency of one or more services.
 
 **Plain output:**
 ```
-  Health check — 2026-05-16 10:42:07
+  Health check: 2026-05-16 10:42:07
   summary         3 total  2 up  1 down
 
-  ✓  https://api.example.com                    UP        200 OK  142ms
-  ✓  tcp://redis:6379                           UP                 3ms
-  ✗  dns://internal.corp                        TIMEOUT   i/o timeout
+  https://api.example.com                    UP        200 OK  142ms
+  tcp://redis:6379                           UP                 3ms
+  dns://internal.corp                        TIMEOUT   i/o timeout
 ```
 
 **JSON output shape:**
@@ -165,16 +163,16 @@ Check uptime and latency of one or more services.
 
 ---
 
-## `annave doc search`
+## `tend doc search`
 
 ```
-annave doc search [query] [flags]
+tend doc search [query] [flags]
 ```
 
 Full-text search across local documentation files.
 
 **Arguments:**
-- `query` — search terms (required). Multiple words are treated as AND terms.
+- `query`: search terms (required). Multiple words are treated as AND terms.
 
 **Flags:**
 
@@ -183,7 +181,7 @@ Full-text search across local documentation files.
 | `-p`, `--path` | string | . | root directory to search |
 | `--format` | string | plain | output format: plain, json, table |
 | `--open` | bool | false | open the top result in `$EDITOR` |
-| `--ext` | []string | — | file extensions to include (repeatable) |
+| `--ext` | []string | none | file extensions to include (repeatable) |
 
 Default extensions: `.md`, `.mdx`, `.txt`, `.rst`, `.html`, `.yaml`, `.json`.
 
@@ -191,7 +189,7 @@ Default extensions: `.md`, `.mdx`, `.txt`, `.rst`, `.html`, `.yaml`, `.json`.
 
 **Plain output:**
 ```
-  Doc search — "rate limiting"  (3 result(s))
+  Doc search: "rate limiting"  (3 result(s))
 
   [1] docs/api-reference.md
        API Reference
@@ -227,10 +225,10 @@ Default extensions: `.md`, `.mdx`, `.txt`, `.rst`, `.html`, `.yaml`, `.json`.
 
 ---
 
-## `annave cleanup scan`
+## `tend cleanup scan`
 
 ```
-annave cleanup scan [flags]
+tend cleanup scan [flags]
 ```
 
 Scan for idle Kubernetes resources.
@@ -239,13 +237,13 @@ Scan for idle Kubernetes resources.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `-n`, `--namespace` | string | — | limit scan to a specific namespace |
-| `--context` | string | — | kubeconfig context to use |
-| `--kubeconfig` | string | — | path to kubeconfig file |
+| `-n`, `--namespace` | string | none | limit scan to a specific namespace |
+| `--context` | string | none | kubeconfig context to use |
+| `--kubeconfig` | string | none | path to kubeconfig file |
 | `--dry-run` | bool | true | preview only, make no changes |
 | `--format` | string | plain | output format: plain, json, table |
 
-Kubeconfig resolution: `--kubeconfig` flag → `$KUBECONFIG` environment variable → `~/.kube/config`.
+Kubeconfig resolution: the `--kubeconfig` flag, then the `$KUBECONFIG` environment variable, then `~/.kube/config`.
 
 If every resource type fails to scan (for example, the cluster is unreachable), the command prints the errors and exits with code 1. If only some resource types or namespaces fail, the plan lists the rest and one `warning:` line per failure is printed to stderr. JSON output also lists them under `warnings`.
 
@@ -265,7 +263,7 @@ If every resource type fails to scan (for example, the cluster is unreachable), 
 
 **Plain output:**
 ```
-  Cleanup scan [DRY RUN] — 2026-05-16 10:42:07
+  Cleanup scan [DRY RUN]: 2026-05-16 10:42:07
   context         docker-desktop
   namespace       all namespaces
   findings        5 idle resource(s)
@@ -306,16 +304,16 @@ If every resource type fails to scan (for example, the cluster is unreachable), 
 
 ---
 
-## `annave security audit`
+## `tend security audit`
 
 ```
-annave security audit [path] [flags]
+tend security audit [path] [flags]
 ```
 
 Audit a path for security issues.
 
 **Arguments:**
-- `path` — directory or file to audit (default: `.`).
+- `path`: directory or file to audit (default: `.`).
 
 **Flags:**
 
@@ -323,21 +321,21 @@ Audit a path for security issues.
 |---|---|---|---|
 | `--type` | string | secrets | scan type: secrets, sast, k8s-live, k8s-local |
 | `--format` | string | plain | output format: plain, json, table |
-| `--kubeconfig` | string | — | kubeconfig file (k8s-live only) |
-| `--context` | string | — | kubeconfig context (k8s-live only) |
+| `--kubeconfig` | string | none | kubeconfig file (k8s-live only) |
+| `--context` | string | none | kubeconfig context (k8s-live only) |
 | `--namespace` | string | all namespaces | namespace to scan (k8s-live only) |
 
 **Scan types:**
 
-`secrets` — 12 patterns: `SECRET001` AWS access key, `SECRET002` AWS secret key, `SECRET003` GCP service account JSON, `SECRET004` RSA private key, `SECRET005` EC private key, `SECRET006` generic PEM private key, `SECRET007` JWT secret assignment, `SECRET008` generic API token/key, `SECRET009` database URL with password, `SECRET010` GitHub token, `SECRET011` Slack token, `SECRET012` generic password assignment.
+`secrets` has 12 patterns: `SECRET001` AWS access key, `SECRET002` AWS secret key, `SECRET003` GCP service account JSON, `SECRET004` RSA private key, `SECRET005` EC private key, `SECRET006` generic PEM private key, `SECRET007` JWT secret assignment, `SECRET008` generic API token/key, `SECRET009` database URL with password, `SECRET010` GitHub token, `SECRET011` Slack token, `SECRET012` generic password assignment.
 
-`sast` (Go) — 10 rules: `GO001` command injection, `GO002` SQL injection, `GO003` path traversal, `GO004` SSRF, `GO005` weak random, `GO006` weak crypto (MD5), `GO007` weak crypto (SHA1), `GO008` plaintext HTTP server, `GO009` unbounded read, `GO010` unsafe import, `GO010` hardcoded credential.
+`sast` (Go) has 10 rules: `GO001` command injection, `GO002` SQL injection, `GO003` path traversal, `GO004` SSRF, `GO005` weak random, `GO006` weak crypto (MD5), `GO007` weak crypto (SHA1), `GO008` plaintext HTTP server, `GO009` unbounded read, `GO010` unsafe import, `GO010` hardcoded credential.
 
-`sast` (TypeScript) — 5 rules: `TS001` innerHTML XSS, `TS002` dangerouslySetInnerHTML, `TS003` eval, `TS004` document.write, `TS005` sensitive localStorage.
+`sast` (TypeScript) has 5 rules: `TS001` innerHTML XSS, `TS002` dangerouslySetInnerHTML, `TS003` eval, `TS004` document.write, `TS005` sensitive localStorage.
 
-`k8s-live` — 7 rules: `K8S001` root container, `K8S002` no CPU limit, `K8S003` no memory limit, `K8S004` privileged container, `K8S005` hostPath volume, `K8S006` missing readiness probe, `K8S007` hostNetwork or hostPID.
+`k8s-live` has 7 rules: `K8S001` root container, `K8S002` no CPU limit, `K8S003` no memory limit, `K8S004` privileged container, `K8S005` hostPath volume, `K8S006` missing readiness probe, `K8S007` hostNetwork or hostPID.
 
-`k8s-local` — same 7 rules plus `K8S008` unpinned image tag (`:latest` or no tag).
+`k8s-local` has the same 7 rules plus `K8S008` unpinned image tag (`:latest` or no tag).
 
 Both Kubernetes scans check init containers and ephemeral containers as well as regular containers. Readiness probe checks apply only to regular containers, and resource limit checks do not apply to ephemeral containers. The root check reads both the pod-level and the container-level `securityContext`. `k8s-local` reads CronJob pods from `spec.jobTemplate.spec.template.spec`.
 
@@ -345,7 +343,7 @@ Both Kubernetes scans check init containers and ephemeral containers as well as 
 
 **Plain output:**
 ```
-  Security audit — . [secrets]
+  Security audit: . [secrets]
   scanned at      2026-05-16 10:42:07
   findings        2
     high          1
@@ -386,16 +384,16 @@ Both Kubernetes scans check init containers and ephemeral containers as well as 
 
 ---
 
-## `annave infra validate`
+## `tend infra validate`
 
 ```
-annave infra validate [target] [flags]
+tend infra validate [target] [flags]
 ```
 
 Validate infrastructure definitions.
 
 **Arguments:**
-- `target` — path to a file or directory (optional; defaults depend on `--type`).
+- `target`: path to a file or directory (optional; defaults depend on `--type`).
 
 **Flags:**
 
@@ -423,7 +421,7 @@ If `helm lint` fails without printing an `[ERROR]` line (for example, the chart 
 
 **Plain output:**
 ```
-  Infra validation — plan.json
+  Infra validation: plan.json
   validated at    2026-05-16 10:42:07
   result          FAILED (3 issue(s))
 
@@ -453,10 +451,10 @@ If `helm lint` fails without printing an `[ERROR]` line (for example, the chart 
 
 ---
 
-## `annave cost scan`
+## `tend cost scan`
 
 ```
-annave cost scan [flags]
+tend cost scan [flags]
 ```
 
 Fetch cloud costs and detect anomalies.
@@ -469,16 +467,16 @@ Fetch cloud costs and detect anomalies.
 | `--since` | string | 30 days ago | billing period start date (YYYY-MM-DD) |
 | `--format` | string | plain | output format: plain, json, table |
 
-**AWS authentication** — standard credential chain: `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` environment variables → `~/.aws/credentials` → IAM instance role. The IAM policy requires `ce:GetCostAndUsage` and `ce:GetCostForecast`. Cost Explorer charges $0.01 per API request.
+**AWS authentication** uses the standard credential chain: `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` environment variables, then `~/.aws/credentials`, then the IAM instance role. The IAM policy requires `ce:GetCostAndUsage` and `ce:GetCostForecast`. Cost Explorer charges $0.01 per API request.
 
-**Anomaly detection** — a service is flagged if its cost on the last day of the period is more than 20% above its 7-day rolling average AND the absolute increase exceeds $5. Both conditions must be met to filter noise.
+**Anomaly detection:** a service is flagged if its cost on the last day of the period is more than 20% above its 7-day rolling average AND the absolute increase exceeds $5. Both conditions must be met to filter noise.
 
-**Forecast** — a 30-day projected cost is fetched via `GetCostForecast` and displayed if available. For new accounts or accounts with less than 14 days of data, the forecast API returns an error and the forecast is omitted silently.
+**Forecast:** a 30-day projected cost is fetched via `GetCostForecast` and displayed if available. For new accounts or accounts with less than 14 days of data, the forecast API returns an error and the forecast is omitted silently.
 
 **Plain output:**
 ```
-  Cost analysis — AWS
-  period          2026-04-16 → 2026-05-15
+  Cost analysis: AWS
+  period          2026-04-16 to 2026-05-15
   total cost      $1,284.72 USD
   scanned at      2026-05-16 10:42:07
   forecast (next 30 days)  $1,310.00 USD
@@ -492,14 +490,14 @@ Fetch cloud costs and detect anomalies.
     ...and 7 more services
 
   ANOMALIES (1):
-  [1] Amazon RDS — 34% above 7-day average ($28.71/day vs $21.43/day avg)
+  [1] Amazon RDS: 34% above 7-day average ($28.71/day vs $21.43/day avg)
 ```
 
 **JSON output shape:**
 ```json
 {
   "provider": "aws",
-  "period": "2026-04-16 → 2026-05-15",
+  "period": "2026-04-16 to 2026-05-15",
   "total_cost": 1284.72,
   "currency": "USD",
   "scanned_at": "2026-05-16T10:42:07Z",

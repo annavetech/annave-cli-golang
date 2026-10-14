@@ -9,7 +9,7 @@ import (
 	"net"
 	"time"
 
-	"annave.tech/cli/internal/health/domain"
+	"github.com/annavetech/tend/internal/health/domain"
 )
 
 // dialFunc matches net.Dialer.DialContext.

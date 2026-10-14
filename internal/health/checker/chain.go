@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 
-	"annave.tech/cli/internal/health/domain"
+	"github.com/annavetech/tend/internal/health/domain"
 )
 
 // CheckChain runs targets sequentially, stopping at the first non-up result.

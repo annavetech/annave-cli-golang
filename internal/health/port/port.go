@@ -6,7 +6,7 @@ package port
 import (
 	"context"
 
-	"annave.tech/cli/internal/health/domain"
+	"github.com/annavetech/tend/internal/health/domain"
 )
 
 // CheckOptions configures a health check run.

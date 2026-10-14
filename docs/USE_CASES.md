@@ -1,9 +1,7 @@
 <!--
-title:       ANNÁVE CLI — Use Cases
+title:       tend: Use Cases
 description: Seven practical scenarios with real shell examples and notes on edge cases.
-             No marketing language — just what works and what to watch for.
-author:      Anna Veretennykova
-website:     www.annave.tech
+             No marketing language, just what works and what to watch for.
 version:     0.1.0
 created:     2026-05-16
 updated:     2026-05-16
@@ -11,7 +9,7 @@ updated:     2026-05-16
 
 # Use Cases
 
-Seven practical scenarios — one per module. Each includes working shell examples and notes on edge cases and limitations.
+Seven practical scenarios, one per module. Each includes working shell examples and notes on edge cases and limitations.
 
 ---
 
@@ -20,26 +18,26 @@ Seven practical scenarios — one per module. Each includes working shell exampl
 **Scenario:** An alert fired. You have a log file from the affected pod. You want to know what changed in the last hour.
 
 ```bash
-annave log analyze /var/log/app/api.log --since 1h --level error
+tend log analyze /var/log/app/api.log --since 1h --level error
 ```
 
 For log streaming from kubectl:
 
 ```bash
 kubectl logs -n production deploy/api --since=1h > /tmp/api.log
-annave log analyze /tmp/api.log --since 1h --level error
+tend log analyze /tmp/api.log --since 1h --level error
 ```
 
 Pipe from a running process:
 
 ```bash
-tail -f /var/log/app.log | annave log analyze --stdin --level error
+tail -f /var/log/app.log | tend log analyze --stdin --level error
 ```
 
 For machine-readable output to feed into another tool:
 
 ```bash
-annave log analyze /var/log/app.log --format json | jq '.findings[] | select(.severity == "critical")'
+tend log analyze /var/log/app.log --format json | jq '.findings[] | select(.severity == "critical")'
 ```
 
 **What to watch:**
@@ -54,7 +52,7 @@ annave log analyze /var/log/app.log --format json | jq '.findings[] | select(.se
 **Scenario:** Before deploying a new version, verify that all upstream dependencies are reachable.
 
 ```bash
-annave health check \
+tend health check \
   https://api.stripe.com/v1 \
   https://api.sendgrid.com \
   tcp://db.internal:5432 \
@@ -67,25 +65,25 @@ annave health check \
 For a dependency chain where each service requires the previous:
 
 ```bash
-annave health check \
+tend health check \
   tcp://postgres:5432 \
   tcp://redis:6379 \
   https://api.internal/health \
   --chain
 ```
 
-In `--chain` mode, the command stops at the first failure. If postgres is down, redis and the API are not checked — the assumption is they depend on the database.
+In `--chain` mode, the command stops at the first failure. If postgres is down, redis and the API are not checked, on the assumption that they depend on the database.
 
 Fail a CI step if any target is down. The command exits `2` when a target is down and `1` on an error:
 
 ```bash
-annave health check https://api.example.com
+tend health check https://api.example.com
 ```
 
 **What to watch:**
 - HTTP checks follow up to 5 redirects. A `301` to HTTPS from an `http://` target counts as up if the final response is 2xx.
-- TCP checks only verify that the port accepts a connection — they do not send any protocol bytes or verify TLS.
-- DNS checks call the system resolver. Split-horizon DNS (internal vs external) means the result depends on where `annave` is running. Running it inside the cluster gives different results than running it from a developer laptop.
+- TCP checks only verify that the port accepts a connection. They do not send any protocol bytes or verify TLS.
+- DNS checks call the system resolver. Split-horizon DNS (internal vs external) means the result depends on where `tend` is running. Running it inside the cluster gives different results than running it from a developer laptop.
 
 ---
 
@@ -94,29 +92,29 @@ annave health check https://api.example.com
 **Scenario:** A monorepo has hundreds of Markdown files spread across multiple packages. You need to find where authentication timeout is configured.
 
 ```bash
-annave doc search "authentication timeout" --path ./docs
+tend doc search "authentication timeout" --path ./docs
 ```
 
 Open the top result immediately in your editor:
 
 ```bash
-annave doc search "rate limit" --path ./docs --open
+tend doc search "rate limit" --path ./docs --open
 ```
 
 Restrict to a specific file type:
 
 ```bash
-annave doc search "database connection" --ext md --ext txt --path .
+tend doc search "database connection" --ext md --ext txt --path .
 ```
 
 Search in the current directory (walks recursively):
 
 ```bash
-annave doc search "circuit breaker" --format table
+tend doc search "circuit breaker" --format table
 ```
 
 **What to watch:**
-- The index is built fresh on each run — there is no persistent index file. For a directory with many thousands of files this adds latency. The default max depth is 10 levels; override it in `limits.yaml` if needed.
+- The index is built fresh on each run. There is no persistent index file. For a directory with many thousands of files this adds latency. The default max depth is 10 levels; override it in `limits.yaml` if needed.
 - Files larger than 10 MB are skipped. This is configurable in `limits.yaml`.
 - `--open` without a `$EDITOR` set falls back to the OS default application for the file type (macOS `open`, Linux `xdg-open`). Line-awareness is only available for `nvim`, `vim`, `code`, and `nano`.
 - The inverted index tokenises on word boundaries. Hyphenated words (`rate-limit`) are split into tokens (`rate`, `limit`). Search for `rate limit` to match both forms.
@@ -128,25 +126,25 @@ annave doc search "circuit breaker" --format table
 **Scenario:** Run a weekly scan to find resources that are consuming quota but doing nothing.
 
 ```bash
-annave cleanup scan --format table
+tend cleanup scan --format table
 ```
 
 Scope to a single namespace:
 
 ```bash
-annave cleanup scan --namespace staging --format table
+tend cleanup scan --namespace staging --format table
 ```
 
 Export results for a report:
 
 ```bash
-annave cleanup scan --format json | jq '.resources | group_by(.resource.kind) | map({kind: .[0].resource.kind, count: length})'
+tend cleanup scan --format json | jq '.resources | group_by(.resource.kind) | map({kind: .[0].resource.kind, count: length})'
 ```
 
 Use a specific kubeconfig context without changing the current context:
 
 ```bash
-annave cleanup scan --context production-eu --kubeconfig ~/.kube/prod.yaml
+tend cleanup scan --context production-eu --kubeconfig ~/.kube/prod.yaml
 ```
 
 **What to watch:**
@@ -162,31 +160,31 @@ annave cleanup scan --context production-eu --kubeconfig ~/.kube/prod.yaml
 **Scenario:** You cloned a codebase from a vendor. Before pushing it to your own GitHub, scan it for hardcoded credentials.
 
 ```bash
-annave security audit /path/to/vendor-repo
+tend security audit /path/to/vendor-repo
 ```
 
 Scan only the application source, not the test fixtures:
 
 ```bash
-annave security audit ./src --type secrets --format table
+tend security audit ./src --type secrets --format table
 ```
 
 Run SAST on the Go backend:
 
 ```bash
-annave security audit ./backend --type sast
+tend security audit ./backend --type sast
 ```
 
 Export for a security review report:
 
 ```bash
-annave security audit . --type secrets --format json | jq '.findings | map(select(.severity == "high" or .severity == "critical"))'
+tend security audit . --type secrets --format json | jq '.findings | map(select(.severity == "high" or .severity == "critical"))'
 ```
 
 **What to watch:**
-- The scanner does NOT respect `.gitignore`. This is intentional — `.env` files are in `.gitignore` precisely because they contain secrets, so they must be scanned.
+- The scanner does NOT respect `.gitignore`. This is intentional: `.env` files are in `.gitignore` precisely because they contain secrets, so they must be scanned.
 - Binary files are skipped (detected by null bytes in the first 512 bytes).
-- SAST uses regex pattern matching, not an AST. This means false positives are possible — a comment containing `http.ListenAndServe` will match rule `GO008`. Review findings before acting.
+- SAST uses regex pattern matching, not an AST. This means false positives are possible: a comment containing `http.ListenAndServe` will match rule `GO008`. Review findings before acting.
 - The SAST scanner will flag its own rule definition strings if you run it against this repository. This is a known limitation of regex SAST without AST support.
 - Secret values in findings are redacted: the first 12 characters are shown and the rest is masked with asterisks. This is enough to identify the secret without logging the full value.
 
@@ -202,13 +200,13 @@ terraform plan -out=plan.tfplan
 terraform show -json plan.tfplan > plan.json
 
 # Validate it
-annave infra validate plan.json
+tend infra validate plan.json
 ```
 
 Or if you already have the JSON plan:
 
 ```bash
-annave infra validate plan.json --format table
+tend infra validate plan.json --format table
 ```
 
 In CI, where the command exits `2` when the validation fails:
@@ -216,25 +214,25 @@ In CI, where the command exits `2` when the validation fails:
 ```bash
 terraform plan -out=plan.tfplan
 terraform show -json plan.tfplan > plan.json
-annave infra validate plan.json
+tend infra validate plan.json
 ```
 
 Lint a Helm chart before packaging:
 
 ```bash
-annave infra validate ./charts/myapp
+tend infra validate ./charts/myapp
 ```
 
 Check all deployed Helm releases across all namespaces:
 
 ```bash
-annave infra validate --type helm --format table
+tend infra validate --type helm --format table
 ```
 
 **What to watch:**
-- `terraform` must be in `$PATH`. If it is not found, the command returns a clear error. The validator also accepts a raw `terraform show -json` JSON file — it does not need to call the binary if you pass the file directly.
+- `terraform` must be in `$PATH`. If it is not found, the command returns a clear error. The validator also accepts a raw `terraform show -json` JSON file. It does not need to call the binary if you pass the file directly.
 - `helm` must be in `$PATH` for release listing and chart linting. The validator checks for the binary at runtime and returns a clear error if it is missing.
-- Terraform validation reads `resource_changes` from the plan JSON. It does not evaluate the actual change — it classifies by resource type and action. A `replace` on an EC2 instance is flagged as destructive even if the instance has no data.
+- Terraform validation reads `resource_changes` from the plan JSON. It does not evaluate the actual change. It classifies by resource type and action. A `replace` on an EC2 instance is flagged as destructive even if the instance has no data.
 - Kubernetes YAML validation walks directories recursively. Files that do not parse as valid YAML are skipped with a warning, not an error.
 
 ---
@@ -244,26 +242,26 @@ annave infra validate --type helm --format table
 **Scenario:** Review which services drove the cost increase last month and flag any anomalies.
 
 ```bash
-annave cost scan --since 2026-04-01
+tend cost scan --since 2026-04-01
 ```
 
 Compare two periods by running twice:
 
 ```bash
-annave cost scan --since 2026-04-01 --format json > april.json
-annave cost scan --since 2026-05-01 --format json > may.json
+tend cost scan --since 2026-04-01 --format json > april.json
+tend cost scan --since 2026-05-01 --format json > may.json
 jq -s '[.[0].records, .[1].records | .[] | {service: .service, amount: .amount}] | group_by(.service)' april.json may.json
 ```
 
 Export for a spreadsheet:
 
 ```bash
-annave cost scan --format json | jq -r '.records[] | [.service, .amount] | @csv'
+tend cost scan --format json | jq -r '.records[] | [.service, .amount] | @csv'
 ```
 
 **What to watch:**
 - AWS Cost Explorer data has a 24-hour delay. The scan always sets the end date to yesterday. You cannot fetch today's costs.
-- For accounts with less than 14 days of data, `GetCostForecast` returns an error. The forecast is silently omitted — the cost data is still returned.
+- For accounts with less than 14 days of data, `GetCostForecast` returns an error. The forecast is silently omitted, and the cost data is still returned.
 - The Cost Explorer API is global. It does not use the AWS region set in `~/.aws/config`. If you have regional credential profiles, the default profile is used unless `AWS_PROFILE` is set.
-- Cost Explorer charges $0.01 per API request. Each `annave cost scan` run makes 2 requests (cost data + forecast). Running it in a tight loop will accumulate charges.
+- Cost Explorer charges $0.01 per API request. Each `tend cost scan` run makes 2 requests (cost data + forecast). Running it in a tight loop will accumulate charges.
 - GCP and Azure are not yet implemented. The command prints an error and exits `1`.

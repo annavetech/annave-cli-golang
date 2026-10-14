@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	"annave.tech/cli/internal/log/domain"
+	"github.com/annavetech/tend/internal/log/domain"
 )
 
 // detectSpikes delegates to time-based or line-based spike detection depending on whether timestamps are present.
@@ -30,7 +30,7 @@ func detectSpikes(entries []domain.LogEntry) []domain.Anomaly {
 	return detectLineSpikes(errorEntries, len(entries))
 }
 
-// detectTimeSpikes finds one-minute windows with ≥3× the average error rate.
+// detectTimeSpikes finds one-minute windows with at least 3x the average error rate.
 func detectTimeSpikes(errors []domain.LogEntry) []domain.Anomaly {
 	type bucket struct {
 		start time.Time
@@ -73,7 +73,7 @@ func detectTimeSpikes(errors []domain.LogEntry) []domain.Anomaly {
 		if ratio >= 3.0 && b.count >= 5 {
 			anomalies = append(anomalies, domain.Anomaly{
 				Kind:      domain.AnomalySpike,
-				Message:   fmt.Sprintf("%.0f× error spike at %s (%d errors in 1 minute)", ratio, b.start.Format("15:04"), b.count),
+				Message:   fmt.Sprintf("%.0fx error spike at %s (%d errors in 1 minute)", ratio, b.start.Format("15:04"), b.count),
 				Count:     b.count,
 				FirstLine: b.first.Line,
 				LastLine:  b.last.Line,
@@ -89,7 +89,7 @@ func detectTimeSpikes(errors []domain.LogEntry) []domain.Anomaly {
 	return anomalies
 }
 
-// detectLineSpikes finds line-range windows with ≥3× the average error density.
+// detectLineSpikes finds line-range windows with at least 3x the average error density.
 func detectLineSpikes(errors []domain.LogEntry, totalLines int) []domain.Anomaly {
 	windowSize := totalLines / 10
 	if windowSize < 10 {
@@ -128,7 +128,7 @@ func detectLineSpikes(errors []domain.LogEntry, totalLines int) []domain.Anomaly
 		if ratio >= 3.0 && win.count >= 5 {
 			anomalies = append(anomalies, domain.Anomaly{
 				Kind:      domain.AnomalySpike,
-				Message:   fmt.Sprintf("%.0f× error spike at lines %d–%d (%d errors)", ratio, win.start, win.end, win.count),
+				Message:   fmt.Sprintf("%.0fx error spike at lines %d to %d (%d errors)", ratio, win.start, win.end, win.count),
 				Count:     win.count,
 				FirstLine: win.start,
 				LastLine:  win.end,

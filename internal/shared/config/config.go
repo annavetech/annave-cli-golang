@@ -62,10 +62,10 @@ var App struct {
 
 func init() {
 	if err := yaml.Unmarshal(messagesYAML, &App.Messages); err != nil {
-		panic("annave: failed to load messages config: " + err.Error())
+		panic("tend: failed to load messages config: " + err.Error())
 	}
 	if err := yaml.Unmarshal(limitsYAML, &App.Limits); err != nil {
-		panic("annave: failed to load limits config: " + err.Error())
+		panic("tend: failed to load limits config: " + err.Error())
 	}
 }
 

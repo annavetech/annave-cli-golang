@@ -11,11 +11,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"annave.tech/cli/internal/cleanup/domain"
-	"annave.tech/cli/internal/cleanup/port"
+	"github.com/annavetech/tend/internal/cleanup/domain"
+	"github.com/annavetech/tend/internal/cleanup/port"
 )
 
-// skipNamespaces are never flagged as empty — they always exist for a reason.
+// skipNamespaces are never flagged as empty, because they always exist for a reason.
 var skipNamespaces = map[string]bool{
 	"kube-system":     true,
 	"kube-public":     true,

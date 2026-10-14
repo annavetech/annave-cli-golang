@@ -12,8 +12,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"annave.tech/cli/internal/cleanup/domain"
-	"annave.tech/cli/internal/cleanup/port"
+	"github.com/annavetech/tend/internal/cleanup/domain"
+	"github.com/annavetech/tend/internal/cleanup/port"
 )
 
 // scanPods lists pods in the target namespace and returns those that are idle or unhealthy.

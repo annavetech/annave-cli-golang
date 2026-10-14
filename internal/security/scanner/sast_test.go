@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"annave.tech/cli/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/domain"
 )
 
 func writeFile(t *testing.T, dir, name, content string) {

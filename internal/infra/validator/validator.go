@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"annave.tech/cli/internal/infra/domain"
-	"annave.tech/cli/internal/infra/port"
+	"github.com/annavetech/tend/internal/infra/domain"
+	"github.com/annavetech/tend/internal/infra/port"
 )
 
 // InfraValidator implements port.Validator.
@@ -35,7 +35,7 @@ func (v *InfraValidator) Validate(ctx context.Context, target string, opts port.
 	case string(domain.ValidateTypeK8s):
 		return validateK8sYAML(target)
 	default:
-		return nil, fmt.Errorf("unknown validate type %q — use terraform, helm, or k8s", vtype)
+		return nil, fmt.Errorf("unknown validate type %q: use terraform, helm, or k8s", vtype)
 	}
 }
 
@@ -51,7 +51,7 @@ func detectType(target string) string {
 	}
 
 	if info.IsDir() {
-		// Directory containing Chart.yaml → helm chart.
+		// A directory containing Chart.yaml is a helm chart.
 		if _, err := os.Stat(filepath.Join(target, "Chart.yaml")); err == nil {
 			return string(domain.ValidateTypeHelm)
 		}

@@ -1,4 +1,4 @@
-module annave.tech/cli
+module github.com/annavetech/tend
 
 go 1.26.0
 

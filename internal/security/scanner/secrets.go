@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"annave.tech/cli/internal/security/domain"
-	"annave.tech/cli/internal/security/scanner/rules"
+	"github.com/annavetech/tend/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/scanner/rules"
 )
 
 var secretRules = []rules.Rule{
@@ -233,7 +233,7 @@ func redact(s string) string {
 	if len(s) <= 12 {
 		return s
 	}
-	return s[:12] + strings.Repeat("*", min(len(s)-12, 8)) + "…"
+	return s[:12] + strings.Repeat("*", min(len(s)-12, 8)) + "..."
 }
 
 func min(a, b int) int {

@@ -13,7 +13,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"annave.tech/cli/internal/infra/domain"
+	"github.com/annavetech/tend/internal/infra/domain"
 )
 
 // deprecatedAPIVersions maps old apiVersions to their replacement.
@@ -28,7 +28,7 @@ var deprecatedAPIVersions = map[string]string{
 }
 
 // infraManifest is a minimal K8s manifest structure for infra checks.
-// Overlaps intentionally with security scanner's equivalent — each module owns its own types.
+// Overlaps on purpose with the security scanner's equivalent, because each module owns its own types.
 type infraManifest struct {
 	APIVersion string    `json:"apiVersion"`
 	Kind       string    `json:"kind"`
@@ -199,7 +199,7 @@ func checkInfraDoc(data []byte, ref string) ([]domain.ValidationIssue, error) {
 		issues = append(issues, domain.ValidationIssue{
 			Severity: domain.SeverityHigh,
 			Rule:     "K8S102",
-			Message:  fmt.Sprintf("%s: apiVersion %q is deprecated — use %s", docRef, m.APIVersion, replacement),
+			Message:  fmt.Sprintf("%s: apiVersion %q is deprecated, use %s", docRef, m.APIVersion, replacement),
 			Resource: docRef,
 		})
 	}
@@ -209,7 +209,7 @@ func checkInfraDoc(data []byte, ref string) ([]domain.ValidationIssue, error) {
 		issues = append(issues, domain.ValidationIssue{
 			Severity: domain.SeverityLow,
 			Rule:     "K8S103",
-			Message:  fmt.Sprintf("%s: replicas: 1 — single replica is a single point of failure", docRef),
+			Message:  fmt.Sprintf("%s: replicas is 1, so one replica is a single point of failure", docRef),
 			Resource: docRef,
 		})
 	}
@@ -223,7 +223,7 @@ func checkInfraDoc(data []byte, ref string) ([]domain.ValidationIssue, error) {
 			issues = append(issues, domain.ValidationIssue{
 				Severity: domain.SeverityMedium,
 				Rule:     "K8S104",
-				Message:  fmt.Sprintf("%s: image %q uses :latest or no tag — non-deterministic deployments", cref, c.Image),
+				Message:  fmt.Sprintf("%s: image %q uses :latest or no tag, so deployments are not deterministic", cref, c.Image),
 				Resource: cref,
 			})
 		}
@@ -233,7 +233,7 @@ func checkInfraDoc(data []byte, ref string) ([]domain.ValidationIssue, error) {
 			issues = append(issues, domain.ValidationIssue{
 				Severity: domain.SeverityMedium,
 				Rule:     "K8S105",
-				Message:  fmt.Sprintf("%s: no resource requests set — scheduler cannot make optimal placement decisions", cref),
+				Message:  fmt.Sprintf("%s: no resource requests set, so the scheduler cannot make optimal placement decisions", cref),
 				Resource: cref,
 			})
 		}
@@ -243,7 +243,7 @@ func checkInfraDoc(data []byte, ref string) ([]domain.ValidationIssue, error) {
 			issues = append(issues, domain.ValidationIssue{
 				Severity: domain.SeverityLow,
 				Rule:     "K8S106",
-				Message:  fmt.Sprintf("%s: no livenessProbe — unhealthy pods will not be restarted automatically", cref),
+				Message:  fmt.Sprintf("%s: no livenessProbe, so unhealthy pods will not be restarted automatically", cref),
 				Resource: cref,
 			})
 		}

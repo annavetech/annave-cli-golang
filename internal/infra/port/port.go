@@ -6,7 +6,7 @@ package port
 import (
 	"context"
 
-	"annave.tech/cli/internal/infra/domain"
+	"github.com/annavetech/tend/internal/infra/domain"
 )
 
 // ValidateOptions parameterises the infra validation.

@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	"annave.tech/cli/internal/cost/domain"
-	"annave.tech/cli/internal/cost/port"
+	"github.com/annavetech/tend/internal/cost/domain"
+	"github.com/annavetech/tend/internal/cost/port"
 )
 
 // CostAnalyzer implements port.CostAnalyzer, routing to the correct provider adapter.
@@ -26,6 +26,6 @@ func (c *CostAnalyzer) Analyze(ctx context.Context, opts port.AnalyzeOptions) (*
 	case "azure":
 		return newAzure().Analyze(ctx, opts)
 	default:
-		return nil, fmt.Errorf("unknown provider %q — use aws, gcp, or azure", opts.Provider)
+		return nil, fmt.Errorf("unknown provider %q: use aws, gcp, or azure", opts.Provider)
 	}
 }

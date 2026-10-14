@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"annave.tech/cli/internal/infra/domain"
-	"annave.tech/cli/internal/infra/port"
-	"annave.tech/cli/internal/infra/validator"
-	"annave.tech/cli/internal/shared/output"
+	"github.com/annavetech/tend/internal/infra/domain"
+	"github.com/annavetech/tend/internal/infra/port"
+	"github.com/annavetech/tend/internal/infra/validator"
+	"github.com/annavetech/tend/internal/shared/output"
 )
 
 var (
@@ -26,18 +26,18 @@ var infraValidateCmd = &cobra.Command{
 	Long: `Validate Terraform plans, Helm charts/releases, and Kubernetes YAML manifests.
 
 Target auto-detection:
-  *.json / *.tfplan          → terraform plan analysis
-  directory with Chart.yaml  → helm chart lint
-  *.yaml / *.yml / directory → Kubernetes manifest validation
-  (no target)                → helm release status check (requires kubeconfig)
+  *.json / *.tfplan           terraform plan analysis
+  directory with Chart.yaml   helm chart lint
+  *.yaml / *.yml / directory  Kubernetes manifest validation
+  (no target)                 helm release status check (requires kubeconfig)
 
 Examples:
-  annave infra validate plan.json
-  annave infra validate plan.tfplan
-  annave infra validate ./charts/myapp
-  annave infra validate ./k8s --type k8s
-  annave infra validate --type helm
-  annave infra validate --format table plan.json`,
+  tend infra validate plan.json
+  tend infra validate plan.tfplan
+  tend infra validate ./charts/myapp
+  tend infra validate ./k8s --type k8s
+  tend infra validate --type helm
+  tend infra validate --format table plan.json`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInfraValidate,
 }
@@ -97,7 +97,7 @@ func printValidationPlain(p *output.Printer, result *domain.ValidationResult) {
 	if !result.Passed {
 		status = "FAILED"
 	}
-	p.Section(fmt.Sprintf("Infra validation — %s", result.Target))
+	p.Section(fmt.Sprintf("Infra validation: %s", result.Target))
 	p.KeyVal("validated at", result.ValidatedAt.Format("2006-01-02 15:04:05"))
 	p.KeyVal("result", fmt.Sprintf("%s (%d issue(s))", status, len(result.Issues)))
 	p.Line("")
@@ -136,7 +136,7 @@ func printValidationTable(p *output.Printer, result *domain.ValidationResult) {
 	if !result.Passed {
 		status = "FAILED"
 	}
-	p.Section(fmt.Sprintf("Infra validation — %s", result.Target))
+	p.Section(fmt.Sprintf("Infra validation: %s", result.Target))
 	p.KeyVal("result", fmt.Sprintf("%s (%d issue(s))", status, len(result.Issues)))
 	p.Line("")
 

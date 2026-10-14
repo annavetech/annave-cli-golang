@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""annave CLI merge gate (pull_request_target: opened, synchronize, reopened, labeled, unlabeled).
+"""tend merge gate (pull_request_target: opened, synchronize, reopened, labeled, unlabeled).
 Computes the `merge-gate` status from the PR's own labels. Fails closed: errors post no status."""
 
 import json

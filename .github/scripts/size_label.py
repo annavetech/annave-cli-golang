@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""annave CLI size labels (pull_request_target: opened, synchronize, reopened).
+"""tend size labels (pull_request_target: opened, synchronize, reopened).
 Buckets a PR by lines changed using the standard Kubernetes/Prow `size` plugin thresholds."""
 
 import json

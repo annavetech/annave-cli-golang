@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"annave.tech/cli/internal/health/domain"
+	"github.com/annavetech/tend/internal/health/domain"
 )
 
 // checkDNS resolves target.Address using the system resolver.

@@ -12,8 +12,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"annave.tech/cli/internal/cleanup/domain"
-	"annave.tech/cli/internal/cleanup/port"
+	"github.com/annavetech/tend/internal/cleanup/domain"
+	"github.com/annavetech/tend/internal/cleanup/port"
 )
 
 // scanPVCs lists PersistentVolumeClaims and flags those that are lost, long-pending, or unmounted.
@@ -62,7 +62,7 @@ func scanPVCs(ctx context.Context, cs *kubernetes.Clientset, opts port.ScanOptio
 				idle = append(idle, domain.IdleResource{
 					Resource: res,
 					Reason:   domain.ReasonPVCNotBound,
-					Detail:   fmt.Sprintf("pending for %s — no matching PV", age.Round(time.Minute)),
+					Detail:   fmt.Sprintf("pending for %s with no matching PV", age.Round(time.Minute)),
 				})
 			}
 

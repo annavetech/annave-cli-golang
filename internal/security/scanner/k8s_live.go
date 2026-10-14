@@ -14,8 +14,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"annave.tech/cli/internal/security/domain"
-	"annave.tech/cli/internal/security/port"
+	"github.com/annavetech/tend/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/port"
 )
 
 // scanK8sLive queries the cluster API for pods and checks each for security misconfigurations.
@@ -53,7 +53,7 @@ func checkPodSecurity(pod corev1.Pod) []domain.Finding {
 		findings = append(findings, domain.Finding{
 			ID: "K8S001", Title: "Pod uses hostNetwork",
 			Severity: domain.SeverityHigh, File: ref,
-			Detail:      "Pod shares the node's network namespace — can access all node network interfaces.",
+			Detail:      "Pod shares the node's network namespace, so it can access all node network interfaces.",
 			Remediation: "Remove hostNetwork: true unless absolutely required. Use a Service instead.",
 		})
 	}
@@ -103,7 +103,7 @@ func checkLiveContainer(c *corev1.Container, kind containerKind, ref string, pod
 		findings = append(findings, domain.Finding{
 			ID: "K8S004", Title: "Privileged container",
 			Severity: domain.SeverityCritical, File: cref,
-			Detail:      "Container runs with full host privileges — equivalent to root on the node.",
+			Detail:      "Container runs with full host privileges, which equals root on the node.",
 			Remediation: "Remove privileged: true. Use specific Linux capabilities instead.",
 		})
 	}
@@ -113,7 +113,7 @@ func checkLiveContainer(c *corev1.Container, kind containerKind, ref string, pod
 		findings = append(findings, domain.Finding{
 			ID: "K8S005", Title: "Container may run as root",
 			Severity: domain.SeverityHigh, File: cref,
-			Detail:      "No runAsNonRoot: true or runAsUser set — container may run as UID 0.",
+			Detail:      "No runAsNonRoot: true or runAsUser set, so the container may run as UID 0.",
 			Remediation: "Set securityContext.runAsNonRoot: true and a non-zero runAsUser.",
 		})
 	}
@@ -123,7 +123,7 @@ func checkLiveContainer(c *corev1.Container, kind containerKind, ref string, pod
 		findings = append(findings, domain.Finding{
 			ID: "K8S006", Title: "No CPU/memory limits set",
 			Severity: domain.SeverityMedium, File: cref,
-			Detail:      "Container has no resource limits — can consume all node resources.",
+			Detail:      "Container has no resource limits, so it can consume all node resources.",
 			Remediation: "Set resources.limits.cpu and resources.limits.memory on every container.",
 		})
 	}
@@ -133,7 +133,7 @@ func checkLiveContainer(c *corev1.Container, kind containerKind, ref string, pod
 		findings = append(findings, domain.Finding{
 			ID: "K8S007", Title: "Missing readiness probe",
 			Severity: domain.SeverityLow, File: cref,
-			Detail:      "Container has no readinessProbe — traffic is sent before the app is ready.",
+			Detail:      "Container has no readinessProbe, so traffic is sent before the app is ready.",
 			Remediation: "Add a readinessProbe (httpGet, tcpSocket, or exec) to gate traffic correctly.",
 		})
 	}

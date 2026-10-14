@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"annave.tech/cli/internal/doc/domain"
-	"annave.tech/cli/internal/doc/port"
-	"annave.tech/cli/internal/doc/searcher"
-	"annave.tech/cli/internal/shared/output"
+	"github.com/annavetech/tend/internal/doc/domain"
+	"github.com/annavetech/tend/internal/doc/port"
+	"github.com/annavetech/tend/internal/doc/searcher"
+	"github.com/annavetech/tend/internal/shared/output"
 )
 
 var (
@@ -30,9 +30,9 @@ var docSearchCmd = &cobra.Command{
 Multiple words are treated as AND terms. Prefix matching is supported.
 
 Examples:
-  annave doc search authentication
-  annave doc search "database connection" --ext md --ext txt
-  annave doc search timeout --path ./docs --open`,
+  tend doc search authentication
+  tend doc search "database connection" --ext md --ext txt
+  tend doc search timeout --path ./docs --open`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runDocSearch,
 }
@@ -111,7 +111,7 @@ func printDocResults(p *output.Printer, results []domain.SearchResult, query dom
 }
 
 func printDocPlain(p *output.Printer, results []domain.SearchResult, query domain.SearchQuery) {
-	p.Section(fmt.Sprintf("Doc search — %q  (%d result(s))", query.Raw, len(results)))
+	p.Section(fmt.Sprintf("Doc search: %q  (%d result(s))", query.Raw, len(results)))
 	p.Line("")
 	for i, r := range results {
 		p.Linef("  [%d] %s", i+1, r.File.RelPath)

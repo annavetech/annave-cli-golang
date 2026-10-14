@@ -1,9 +1,7 @@
 <!--
-title:       ANNÁVE CLI — Configuration Reference
+title:       tend: Configuration Reference
 description: Every key in limits.yaml and messages.yaml, its default value,
              what it controls, and how to change it.
-author:      Anna Veretennykova
-website:     www.annave.tech
 version:     0.1.0
 created:     2026-05-16
 updated:     2026-05-16
@@ -11,17 +9,17 @@ updated:     2026-05-16
 
 # Configuration
 
-ANNÁVE CLI embeds two YAML files at build time. To change a default, edit the file and rebuild the binary.
+tend embeds two YAML files at build time. To change a default, edit the file and rebuild the binary.
 
 ```bash
 # Edit the config
 vim internal/shared/config/limits.yaml
 
 # Rebuild
-go build -o annave ./cmd/annave
+go build -o tend ./cmd/tend
 ```
 
-There is no runtime config file or environment variable for these values. The embedded defaults are intentional — a binary deployed to a server behaves identically on every machine without any external configuration.
+There is no runtime config file or environment variable for these values. The embedded defaults are intentional: a binary deployed to a server behaves identically on every machine without any external configuration.
 
 ---
 
@@ -78,7 +76,7 @@ doc:
 | `max_results` | 50 | Maximum number of search results returned. |
 | `max_depth` | 10 | Maximum directory depth walked during index building. |
 
-**When to change:** If your documentation includes very large files (generated API references, large YAML specs), increase `max_file_size_mb`. If you have documentation nested deeper than 10 levels, increase `max_depth` — though this is unusual and often indicates a structure problem.
+**When to change:** If your documentation includes very large files (generated API references, large YAML specs), increase `max_file_size_mb`. If you have documentation nested deeper than 10 levels, increase `max_depth`. This is unusual and often indicates a structure problem.
 
 ---
 
@@ -95,7 +93,7 @@ cleanup:
 | `timeout_seconds` | 30 | Context deadline for the entire scan. If the cluster API is slow, this may need to be increased. |
 | `max_resources` | 1000 | Total idle resources returned across all types. Resources beyond this cap are silently dropped. |
 
-**When to change:** For large clusters with many namespaces, the default 30-second timeout may be too short. Increase `timeout_seconds` to allow more time for API list calls. If you expect more than 1,000 idle resources, increase `max_resources` — though this usually indicates a hygiene problem worth addressing.
+**When to change:** For large clusters with many namespaces, the default 30-second timeout may be too short. Increase `timeout_seconds` to allow more time for API list calls. If you expect more than 1,000 idle resources, increase `max_resources`. This usually indicates a hygiene problem worth addressing.
 
 ---
 
@@ -124,12 +122,12 @@ errors:
 | `ERR_NOT_FOUND` | resource not found | Target file or k8s resource does not exist |
 | `ERR_PARSE_FAILED` | failed to parse input | Malformed YAML, JSON decode error |
 
-**When to change:** If you want different user-facing wording, edit the message for the relevant code. The code values (`ERR_*`) are stable and referenced in Go source — do not change them. Only the message strings are safe to edit.
+**When to change:** If you want different user-facing wording, edit the message for the relevant code. The code values (`ERR_*`) are stable and referenced in Go source. Do not change them. Only the message strings are safe to edit.
 
 ---
 
 ## Build-time vs runtime configuration
 
-There is no runtime configuration mechanism by design. The decision mirrors the ANNÁVE PDF Engine approach: a binary that behaves identically everywhere is easier to reason about and audit than one that reads from environment variables or config files at startup.
+There is no runtime configuration mechanism by design. The decision mirrors the PDF Engine approach: a binary that behaves identically everywhere is easier to reason about and audit than one that reads from environment variables or config files at startup.
 
 If you need different limits for different environments (tighter limits in CI, more generous limits locally), build two binaries with different YAML values. The build is fast (`go build` takes under 5 seconds) and the binary is small (~20 MB with all dependencies embedded as static linking is used by default via `CGO_ENABLED=0`).
