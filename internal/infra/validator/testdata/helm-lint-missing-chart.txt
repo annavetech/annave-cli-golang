@@ -1,0 +1,4 @@
+==> Linting /charts/missing
+Error unable to check Chart.yaml file in chart: stat /charts/missing/Chart.yaml: no such file or directory
+
+Error: 1 chart(s) linted, 1 chart(s) failed

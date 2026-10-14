@@ -17,6 +17,8 @@ type Rule struct {
 	Remediation string
 	Pattern     *regexp.Regexp
 	FileExts    []string // nil = all files; [".go"] = Go files only
+	// Sensitive rules report only the redacted match, never the source line.
+	Sensitive bool
 }
 
 // MatchesExt reports whether this rule applies to a file with the given extension.

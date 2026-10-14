@@ -6,8 +6,6 @@ package validator
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,8 +15,8 @@ import (
 
 // tfPlan is the minimal structure of `terraform show -json` output.
 type tfPlan struct {
-	FormatVersion    string            `json:"format_version"`
-	TerraformVersion string            `json:"terraform_version"`
+	FormatVersion    string             `json:"format_version"`
+	TerraformVersion string             `json:"terraform_version"`
 	ResourceChanges  []tfResourceChange `json:"resource_changes"`
 }
 
@@ -35,47 +33,47 @@ type tfChange struct {
 
 // destructiveDataRisk maps resource types whose deletion destroys irreplaceable data.
 var destructiveDataRisk = map[string]string{
-	"aws_db_instance":               "RDS database — deletion destroys all data permanently",
-	"aws_rds_cluster":               "RDS Aurora cluster — deletion destroys all data permanently",
-	"aws_dynamodb_table":            "DynamoDB table — deletion destroys all items permanently",
-	"aws_s3_bucket":                 "S3 bucket — may contain critical data",
-	"aws_elasticsearch_domain":      "Elasticsearch domain and all indices",
-	"aws_opensearch_domain":         "OpenSearch domain and all indices",
-	"google_sql_database_instance":  "Cloud SQL instance — deletion destroys all data",
-	"google_bigtable_instance":      "Bigtable instance and all tables",
-	"azurerm_sql_server":            "Azure SQL Server and all databases",
-	"azurerm_cosmosdb_account":      "CosmosDB account and all data",
+	"aws_db_instance":              "RDS database — deletion destroys all data permanently",
+	"aws_rds_cluster":              "RDS Aurora cluster — deletion destroys all data permanently",
+	"aws_dynamodb_table":           "DynamoDB table — deletion destroys all items permanently",
+	"aws_s3_bucket":                "S3 bucket — may contain critical data",
+	"aws_elasticsearch_domain":     "Elasticsearch domain and all indices",
+	"aws_opensearch_domain":        "OpenSearch domain and all indices",
+	"google_sql_database_instance": "Cloud SQL instance — deletion destroys all data",
+	"google_bigtable_instance":     "Bigtable instance and all tables",
+	"azurerm_sql_server":           "Azure SQL Server and all databases",
+	"azurerm_cosmosdb_account":     "CosmosDB account and all data",
 }
 
 // iamRisk maps IAM-related resource types that affect security posture.
 var iamRisk = map[string]string{
-	"aws_iam_role":                  "IAM role",
-	"aws_iam_policy":                "IAM policy",
-	"aws_iam_user":                  "IAM user",
-	"aws_iam_role_policy":           "IAM inline role policy",
+	"aws_iam_role":                   "IAM role",
+	"aws_iam_policy":                 "IAM policy",
+	"aws_iam_user":                   "IAM user",
+	"aws_iam_role_policy":            "IAM inline role policy",
 	"aws_iam_role_policy_attachment": "IAM role policy attachment",
-	"google_project_iam_binding":    "GCP project IAM binding",
-	"google_project_iam_member":     "GCP project IAM member",
-	"azurerm_role_assignment":       "Azure RBAC role assignment",
+	"google_project_iam_binding":     "GCP project IAM binding",
+	"google_project_iam_member":      "GCP project IAM member",
+	"azurerm_role_assignment":        "Azure RBAC role assignment",
 }
 
 // networkRisk maps network security resource types.
 var networkRisk = map[string]string{
-	"aws_security_group":                "Security group",
-	"aws_security_group_rule":           "Security group rule",
-	"aws_network_acl":                   "Network ACL",
-	"google_compute_firewall":           "GCP compute firewall rule",
-	"azurerm_network_security_group":    "Azure network security group",
-	"azurerm_network_security_rule":     "Azure NSG rule",
+	"aws_security_group":             "Security group",
+	"aws_security_group_rule":        "Security group rule",
+	"aws_network_acl":                "Network ACL",
+	"google_compute_firewall":        "GCP compute firewall rule",
+	"azurerm_network_security_group": "Azure network security group",
+	"azurerm_network_security_rule":  "Azure NSG rule",
 }
 
-func validateTerraform(target string) (*domain.ValidationResult, error) {
+func validateTerraform(run commandRunner, target string) (*domain.ValidationResult, error) {
 	result := &domain.ValidationResult{
 		Target:      target,
 		ValidatedAt: time.Now(),
 	}
 
-	data, err := loadTerraformJSON(target)
+	data, err := loadTerraformJSON(run, target)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +95,12 @@ func validateTerraform(target string) (*domain.ValidationResult, error) {
 	return result, nil
 }
 
-func loadTerraformJSON(target string) ([]byte, error) {
+func loadTerraformJSON(run commandRunner, target string) ([]byte, error) {
 	ext := strings.ToLower(filepath.Ext(target))
 
 	// Already a JSON file — parse directly.
 	if ext == ".json" {
-		data, err := os.ReadFile(target)
+		data, err := readFile(target)
 		if err != nil {
 			return nil, fmt.Errorf("cannot read plan file: %w", err)
 		}
@@ -110,7 +108,7 @@ func loadTerraformJSON(target string) ([]byte, error) {
 	}
 
 	// Binary .tfplan — shell out to terraform show -json.
-	tfBin, err := exec.LookPath("terraform")
+	tfBin, err := run.LookPath("terraform")
 	if err != nil {
 		return nil, fmt.Errorf("terraform binary not found in PATH — run `terraform show -json plan.tfplan > plan.json` and pass the JSON file instead")
 	}
@@ -119,10 +117,7 @@ func loadTerraformJSON(target string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(tfBin, "show", "-json", abs)
-	cmd.Dir = filepath.Dir(abs)
-
-	out, err := cmd.Output()
+	out, err := run.Output(filepath.Dir(abs), tfBin, "show", "-json", abs)
 	if err != nil {
 		return nil, fmt.Errorf("terraform show -json failed: %w", err)
 	}

@@ -5,6 +5,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -91,25 +92,56 @@ func (s *K8sScanner) Scan(ctx context.Context, opts port.ScanOptions) (*domain.C
 		DryRun:    opts.DryRun,
 	}
 
-	type scannerFn func(context.Context, *kubernetes.Clientset, port.ScanOptions) ([]domain.IdleResource, error)
-	scanners := []scannerFn{scanPods, scanPVCs, scanConfigMaps, scanNamespaces}
+	type scannerFn func(context.Context, *kubernetes.Clientset, port.ScanOptions) ([]domain.IdleResource, []error, error)
+	single := func(f func(context.Context, *kubernetes.Clientset, port.ScanOptions) ([]domain.IdleResource, error)) scannerFn {
+		return func(ctx context.Context, cs *kubernetes.Clientset, opts port.ScanOptions) ([]domain.IdleResource, []error, error) {
+			r, err := f(ctx, cs, opts)
+			return r, nil, err
+		}
+	}
+	scanners := []struct {
+		kind string
+		fn   scannerFn
+	}{
+		{"pods", single(scanPods)},
+		{"persistent volume claims", single(scanPVCs)},
+		{"config maps", single(scanConfigMaps)},
+		{"namespaces", scanNamespaces},
+	}
 
-	var mu sync.Mutex
+	// Each goroutine writes only its own slot, so results need no lock and keep a fixed order.
+	type result struct {
+		resources []domain.IdleResource
+		partial   []error
+		err       error
+	}
+	results := make([]result, len(scanners))
 	var wg sync.WaitGroup
-	for _, fn := range scanners {
+	for i, s := range scanners {
 		wg.Add(1)
-		go func(f scannerFn) {
+		go func(i int, f scannerFn) {
 			defer wg.Done()
-			resources, err := f(ctx, cs, opts)
-			if err != nil {
-				return // best-effort: skip failed scanner
-			}
-			mu.Lock()
-			plan.Resources = append(plan.Resources, resources...)
-			mu.Unlock()
-		}(fn)
+			r, partial, err := f(ctx, cs, opts)
+			results[i] = result{resources: r, partial: partial, err: err}
+		}(i, s.fn)
 	}
 	wg.Wait()
+
+	var failed []error
+	for i, r := range results {
+		if r.err != nil {
+			failed = append(failed, fmt.Errorf("scan %s: %w", scanners[i].kind, r.err))
+			plan.Warnings = append(plan.Warnings, fmt.Sprintf("%s not scanned: %v", scanners[i].kind, r.err))
+			continue
+		}
+		plan.Resources = append(plan.Resources, r.resources...)
+		for _, err := range r.partial {
+			plan.Warnings = append(plan.Warnings, err.Error())
+		}
+	}
+	if len(failed) == len(scanners) {
+		return nil, errors.Join(failed...)
+	}
 
 	if max := config.App.Limits.Cleanup.MaxResources; len(plan.Resources) > max {
 		plan.Resources = plan.Resources[:max]

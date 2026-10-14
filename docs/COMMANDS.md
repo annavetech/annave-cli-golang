@@ -58,6 +58,8 @@ Analyze a log file for errors, spikes, and repeated patterns.
 
 **Detected log formats:** JSON structured (any key set including `level`/`msg` or `severity`/`message`), nginx access log, syslog, plain text.
 
+Lines longer than 1 MiB are cut to their first 1 MiB and reading continues. The count is shown as `truncated lines` in plain output and `truncated_lines` in JSON output. A read error ends the command with an error.
+
 **What it detects:**
 - Repeated error patterns — messages that appear 3 or more times
 - Time spikes — minutes with 3× the rolling average error rate
@@ -239,6 +241,8 @@ Scan for idle Kubernetes resources.
 
 Kubeconfig resolution: `--kubeconfig` flag → `$KUBECONFIG` environment variable → `~/.kube/config`.
 
+If every resource type fails to scan (for example, the cluster is unreachable), the command prints the errors and exits with code 1. If only some resource types or namespaces fail, the plan lists the rest and one `warning:` line per failure is printed to stderr. JSON output also lists them under `warnings`.
+
 **What it finds:**
 
 | Resource | Condition |
@@ -313,6 +317,7 @@ Audit a path for security issues.
 | `--format` | string | plain | output format: plain, json, table |
 | `--kubeconfig` | string | — | kubeconfig file (k8s-live only) |
 | `--context` | string | — | kubeconfig context (k8s-live only) |
+| `--namespace` | string | all namespaces | namespace to scan (k8s-live only) |
 
 **Scan types:**
 
@@ -325,6 +330,10 @@ Audit a path for security issues.
 `k8s-live` — 7 rules: `K8S001` root container, `K8S002` no CPU limit, `K8S003` no memory limit, `K8S004` privileged container, `K8S005` hostPath volume, `K8S006` missing readiness probe, `K8S007` hostNetwork or hostPID.
 
 `k8s-local` — same 7 rules plus `K8S008` unpinned image tag (`:latest` or no tag).
+
+Both Kubernetes scans check init containers and ephemeral containers as well as regular containers. Readiness probe checks apply only to regular containers, and resource limit checks do not apply to ephemeral containers. The root check reads both the pod-level and the container-level `securityContext`. `k8s-local` reads CronJob pods from `spec.jobTemplate.spec.template.spec`.
+
+`secrets` and `sast` print a `warning:` line to stderr for a file that could not be read to the end. Findings from that file before the error are kept. For `GO010` and `TS005`, the detail shows only the start of the match, never the full source line.
 
 **Plain output:**
 ```
@@ -392,11 +401,13 @@ Validate infrastructure definitions.
 | `*.json`, `*.tfplan` | terraform |
 | directory with `Chart.yaml` | helm chart lint |
 | `*.yaml`, `*.yml`, directory | Kubernetes manifests |
-| no target | helm release list (`helm list -A`) |
+| no target | helm release list (`helm list -A --all`) |
 
 **Terraform rules:** `TF001` destructive change (delete/replace), `TF002` IAM resource modification, `TF003` network/firewall change, `TF004` data resource deletion risk, `TF005` database resource modification.
 
 **Helm rules:** `HELM001` release in Failed state, `HELM002` release in Pending state, `HELM003` chart lint error, `HELM004` chart lint warning, `HELM005` chart lint info.
+
+If `helm lint` fails without printing an `[ERROR]` line (for example, the chart directory has no `Chart.yaml`), the command exits with an error that includes the helm output.
 
 **Kubernetes rules:** `K8S101` deprecated apiVersion, `K8S102` missing metadata.name, `K8S103` image tag is `latest` or missing, `K8S104` Deployment with replicas:1 and no PodDisruptionBudget, `K8S105` missing resource limits, `K8S106` missing liveness probe.
 

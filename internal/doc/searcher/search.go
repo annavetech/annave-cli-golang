@@ -6,7 +6,10 @@ package searcher
 import (
 	"bufio"
 	"context"
+	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -15,9 +18,9 @@ import (
 	"annave.tech/cli/internal/shared/config"
 )
 
-func search(ctx context.Context, idx *domain.Index, query domain.SearchQuery, opts port.SearchOptions) []domain.SearchResult {
+func search(ctx context.Context, idx *domain.Index, query domain.SearchQuery, opts port.SearchOptions) ([]domain.SearchResult, error) {
 	if len(query.Terms) == 0 || len(idx.Files) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	maxResults := opts.MaxResults
@@ -77,31 +80,55 @@ func search(ctx context.Context, idx *domain.Index, query domain.SearchQuery, op
 		candidates = candidates[:maxResults]
 	}
 
+	// Excerpts are read through the index root so a path cannot leave it; without it they stay empty.
+	// A file root opens its parent directory, as in buildIndex.
+	rootDir := idx.Root
+	if info, err := os.Lstat(idx.Root); err == nil && !info.IsDir() {
+		rootDir = filepath.Dir(idx.Root)
+	}
+	root, rootErr := os.OpenRoot(rootDir)
 	results := make([]domain.SearchResult, 0, len(candidates))
 	for _, c := range candidates {
 		if ctx.Err() != nil {
 			break
 		}
 		file := idx.Files[c.fileIndex]
+		excerpt := ""
+		if name, err := filepath.Rel(rootDir, file.Path); rootErr == nil && err == nil {
+			excerpt = extractExcerpt(root, name, c.line, query.Terms)
+		}
 		results = append(results, domain.SearchResult{
 			File:    file,
 			Score:   c.score,
-			Excerpt: extractExcerpt(file.Path, c.line, query.Terms),
+			Excerpt: excerpt,
 			Line:    c.line,
 		})
 	}
-	return results
+	if rootErr == nil {
+		if err := root.Close(); err != nil {
+			return nil, fmt.Errorf("close %s: %w", idx.Root, err)
+		}
+	}
+	return results, nil
 }
 
 // extractExcerpt reads the matching line from disk and returns a trimmed snippet.
-func extractExcerpt(path string, targetLine int, terms []string) string {
-	f, err := os.Open(path)
+// Any read or close error yields an empty excerpt.
+func extractExcerpt(root *os.Root, relPath string, targetLine int, terms []string) string {
+	f, err := root.Open(relPath)
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	line := excerptLine(f, targetLine)
+	if err := f.Close(); err != nil {
+		return ""
+	}
+	return line
+}
 
-	scanner := bufio.NewScanner(f)
+// excerptLine returns line targetLine of r, trimmed to 200 bytes.
+func excerptLine(r io.Reader, targetLine int) string {
+	scanner := bufio.NewScanner(r)
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++

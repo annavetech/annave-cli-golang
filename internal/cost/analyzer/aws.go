@@ -62,10 +62,6 @@ func (a *AWSAnalyzer) Analyze(ctx context.Context, opts port.AnalyzeOptions) (*d
 	}
 
 	// Build a time-series map: service → []float64 (daily costs, chronological).
-	type dayCost struct {
-		date   string
-		amount float64
-	}
 	// Preserve insertion order by collecting dates first.
 	var dates []string
 	dateSet := make(map[string]bool)

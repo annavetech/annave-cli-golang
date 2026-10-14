@@ -24,7 +24,10 @@ func (a *LogAnalyzer) Analyze(r io.Reader, filename string, opts port.AnalyzeOpt
 		maxLines = config.App.Limits.Log.MaxLines
 	}
 
-	entries, format, totalLines, parseErrors := parseLines(r, maxLines)
+	entries, format, totalLines, parseErrors, truncated, err := parseLines(r, maxLines)
+	if err != nil {
+		return nil, err
+	}
 	filtered := filterEntries(entries, opts.Since, opts.MinLevel)
 
 	const minRepeat = 3
@@ -56,6 +59,7 @@ func (a *LogAnalyzer) Analyze(r io.Reader, filename string, opts port.AnalyzeOpt
 		TimeRange:   tr,
 		Findings:    findings,
 		ParseErrors: parseErrors,
+		Truncated:   truncated,
 	}, nil
 }
 

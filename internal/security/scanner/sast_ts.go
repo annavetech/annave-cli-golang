@@ -48,17 +48,18 @@ var tsRules = []rules.Rule{
 			"appendChild) or template literals with textContent instead.",
 	},
 	{
-		ID:       "TS005",
-		Title:    "Sensitive data in localStorage",
-		Severity: domain.SeverityMedium,
-		Pattern:  rules.MustCompile(`(?i)localStorage\.setItem\s*\([^,]*(?:token|password|secret|auth|key)`),
-		FileExts: []string{".ts", ".tsx", ".js", ".jsx"},
+		ID:        "TS005",
+		Title:     "Sensitive data in localStorage",
+		Severity:  domain.SeverityMedium,
+		Pattern:   rules.MustCompile(`(?i)localStorage\.setItem\s*\([^,]*(?:token|password|secret|auth|key)`),
+		FileExts:  []string{".ts", ".tsx", ".js", ".jsx"},
+		Sensitive: true,
 		Remediation: "Do not store sensitive credentials in localStorage — it is accessible to " +
 			"any JavaScript on the page. Use httpOnly cookies or in-memory state instead.",
 	},
 }
 
 // scanSASTTypeScript runs TypeScript/JavaScript SAST rules against frontend source files.
-func scanSASTTypeScript(ctx context.Context, root string) ([]domain.Finding, error) {
+func scanSASTTypeScript(ctx context.Context, root string) ([]domain.Finding, []string, error) {
 	return scanSASTFiles(ctx, root, tsRules, []string{".ts", ".tsx", ".js", ".jsx"})
 }

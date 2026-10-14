@@ -18,13 +18,13 @@ import (
 
 // deprecatedAPIVersions maps old apiVersions to their replacement.
 var deprecatedAPIVersions = map[string]string{
-	"apps/v1beta1":                  "apps/v1",
-	"apps/v1beta2":                  "apps/v1",
-	"extensions/v1beta1":            "apps/v1 or networking.k8s.io/v1",
-	"networking.k8s.io/v1beta1":     "networking.k8s.io/v1",
+	"apps/v1beta1":                      "apps/v1",
+	"apps/v1beta2":                      "apps/v1",
+	"extensions/v1beta1":                "apps/v1 or networking.k8s.io/v1",
+	"networking.k8s.io/v1beta1":         "networking.k8s.io/v1",
 	"rbac.authorization.k8s.io/v1beta1": "rbac.authorization.k8s.io/v1",
-	"apiextensions.k8s.io/v1beta1":  "apiextensions.k8s.io/v1",
-	"policy/v1beta1":                "policy/v1",
+	"apiextensions.k8s.io/v1beta1":      "apiextensions.k8s.io/v1",
+	"policy/v1beta1":                    "policy/v1",
 }
 
 // infraManifest is a minimal K8s manifest structure for infra checks.
@@ -42,20 +42,28 @@ type infraMeta struct {
 }
 
 type infraSpec struct {
-	Replicas int              `json:"replicas"`
+	Replicas int `json:"replicas"`
 	// Pod spec (for bare Pods)
 	Containers []infraContainer `json:"containers"`
 	// Workload wrapper
-	Template struct {
+	Template infraPodTemplate `json:"template"`
+	// CronJob wrapper: spec.jobTemplate.spec.template
+	JobTemplate struct {
 		Spec struct {
-			Containers []infraContainer `json:"containers"`
+			Template infraPodTemplate `json:"template"`
 		} `json:"spec"`
-	} `json:"template"`
+	} `json:"jobTemplate"`
+}
+
+type infraPodTemplate struct {
+	Spec struct {
+		Containers []infraContainer `json:"containers"`
+	} `json:"spec"`
 }
 
 type infraContainer struct {
-	Name  string `json:"name"`
-	Image string `json:"image"`
+	Name      string `json:"name"`
+	Image     string `json:"image"`
 	Resources struct {
 		Requests map[string]string `json:"requests"`
 		Limits   map[string]string `json:"limits"`
@@ -82,18 +90,19 @@ func validateK8sYAML(target string) (*domain.ValidationResult, error) {
 	}
 
 	if info.IsDir() {
-		issues, err := walkAndCheckManifests(target)
+		issues, warnings, err := walkAndCheckManifests(target)
 		if err != nil {
 			return nil, err
 		}
 		result.Issues = issues
+		result.Warnings = warnings
 	} else {
 		rel := filepath.Base(target)
-		issues, err := checkInfraManifestFile(target, rel)
+		data, err := readFile(target)
 		if err != nil {
 			return nil, err
 		}
-		result.Issues = issues
+		result.Issues = checkInfraManifest(data, rel)
 	}
 
 	result.Passed = !hasHigherThan(result.Issues, domain.SeverityMedium)
@@ -101,9 +110,19 @@ func validateK8sYAML(target string) (*domain.ValidationResult, error) {
 }
 
 // walkAndCheckManifests walks a directory tree and validates all YAML files found.
-func walkAndCheckManifests(root string) ([]domain.ValidationIssue, error) {
-	var issues []domain.ValidationIssue
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+// Files are read through an os.Root so a symlink cannot lead outside root.
+// A file that cannot be read, such as a symlink pointing outside root, is named in a warning.
+func walkAndCheckManifests(root string) (issues []domain.ValidationIssue, warnings []string, err error) {
+	rootFS, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		if cerr := rootFS.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -118,23 +137,19 @@ func walkAndCheckManifests(root string) ([]domain.ValidationIssue, error) {
 			return nil
 		}
 		rel, _ := filepath.Rel(root, path)
-		ff, err := checkInfraManifestFile(path, rel)
+		data, err := rootFS.ReadFile(rel)
 		if err != nil {
+			warnings = append(warnings, fmt.Sprintf("skipped %s: %v", rel, err))
 			return nil
 		}
-		issues = append(issues, ff...)
+		issues = append(issues, checkInfraManifest(data, rel)...)
 		return nil
 	})
-	return issues, err
+	return issues, warnings, err
 }
 
-// checkInfraManifestFile splits multi-document YAML on --- and validates each document.
-func checkInfraManifestFile(path, relPath string) ([]domain.ValidationIssue, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
+// checkInfraManifest splits multi-document YAML on --- and validates each document.
+func checkInfraManifest(data []byte, relPath string) []domain.ValidationIssue {
 	var issues []domain.ValidationIssue
 	for i, doc := range strings.Split(string(data), "\n---") {
 		doc = strings.TrimSpace(doc)
@@ -148,7 +163,7 @@ func checkInfraManifestFile(path, relPath string) ([]domain.ValidationIssue, err
 		}
 		issues = append(issues, ff...)
 	}
-	return issues, nil
+	return issues
 }
 
 // checkInfraDoc applies infra validation rules to a single YAML document.
@@ -200,11 +215,7 @@ func checkInfraDoc(data []byte, ref string) ([]domain.ValidationIssue, error) {
 	}
 
 	// Per-container checks.
-	containers := m.Spec.Containers
-	if workloadKinds[m.Kind] {
-		containers = m.Spec.Template.Spec.Containers
-	}
-	for _, c := range containers {
+	for _, c := range m.containers() {
 		cref := fmt.Sprintf("%s (container: %s)", docRef, c.Name)
 
 		// Unpinned image tag.
@@ -245,4 +256,16 @@ func checkInfraDoc(data []byte, ref string) ([]domain.ValidationIssue, error) {
 var workloadKinds = map[string]bool{
 	"Deployment": true, "StatefulSet": true, "DaemonSet": true,
 	"ReplicaSet": true, "Job": true,
+}
+
+// containers returns the pod containers of m for its kind.
+func (m *infraManifest) containers() []infraContainer {
+	switch {
+	case m.Kind == "CronJob":
+		return m.Spec.JobTemplate.Spec.Template.Spec.Containers
+	case workloadKinds[m.Kind]:
+		return m.Spec.Template.Spec.Containers
+	default:
+		return m.Spec.Containers
+	}
 }

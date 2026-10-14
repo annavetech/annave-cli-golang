@@ -6,7 +6,6 @@ package validator
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -36,8 +35,8 @@ var unhealthyStatuses = map[string]string{
 }
 
 // validateHelm inspects deployed Helm releases (empty target) or lints a chart directory.
-func validateHelm(target string) (*domain.ValidationResult, error) {
-	helmBin, err := exec.LookPath("helm")
+func validateHelm(run commandRunner, target string) (*domain.ValidationResult, error) {
+	helmBin, err := run.LookPath("helm")
 	if err != nil {
 		return nil, fmt.Errorf("helm binary not found in PATH — install helm to use infra validate with Helm")
 	}
@@ -49,7 +48,7 @@ func validateHelm(target string) (*domain.ValidationResult, error) {
 
 	if target == "" || target == "." {
 		// No target → inspect deployed releases in the cluster.
-		issues, err := listReleases(helmBin)
+		issues, err := listReleases(run, helmBin)
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +59,7 @@ func validateHelm(target string) (*domain.ValidationResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		issues, err := lintChart(helmBin, abs)
+		issues, err := lintChart(run, helmBin, abs)
 		if err != nil {
 			return nil, err
 		}
@@ -71,9 +70,10 @@ func validateHelm(target string) (*domain.ValidationResult, error) {
 	return result, nil
 }
 
-// listReleases runs helm list -A and flags unhealthy or superseded releases.
-func listReleases(helmBin string) ([]domain.ValidationIssue, error) {
-	out, err := exec.Command(helmBin, "list", "-A", "-o", "json").Output()
+// listReleases runs helm list -A --all and flags unhealthy or superseded releases.
+// Without --all, helm lists only deployed and failed releases.
+func listReleases(run commandRunner, helmBin string) ([]domain.ValidationIssue, error) {
+	out, err := run.Output("", helmBin, "list", "-A", "-o", "json", "--all")
 	if err != nil {
 		return nil, fmt.Errorf("helm list failed: %w", err)
 	}
@@ -110,12 +110,12 @@ func listReleases(helmBin string) ([]domain.ValidationIssue, error) {
 }
 
 // lintChart runs helm lint against a chart directory and maps its output to ValidationIssues.
-func lintChart(helmBin, chartPath string) ([]domain.ValidationIssue, error) {
-	cmd := exec.Command(helmBin, "lint", chartPath)
+func lintChart(run commandRunner, helmBin, chartPath string) ([]domain.ValidationIssue, error) {
 	// helm lint exits non-zero on errors; capture combined output regardless.
-	out, _ := cmd.CombinedOutput()
+	out, runErr := run.CombinedOutput(helmBin, "lint", chartPath)
 
 	var issues []domain.ValidationIssue
+	lintErrors := 0
 	for _, line := range strings.Split(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -128,6 +128,7 @@ func lintChart(helmBin, chartPath string) ([]domain.ValidationIssue, error) {
 			sev = domain.SeverityHigh
 			rule = "HELM003"
 			line = strings.TrimPrefix(line, "[ERROR]")
+			lintErrors++
 		case strings.HasPrefix(line, "[WARNING]"):
 			sev = domain.SeverityMedium
 			rule = "HELM004"
@@ -146,6 +147,10 @@ func lintChart(helmBin, chartPath string) ([]domain.ValidationIssue, error) {
 			Message:  strings.TrimSpace(line),
 			Resource: chartPath,
 		})
+	}
+	// A failure without an [ERROR] line (such as a missing chart) would otherwise pass.
+	if runErr != nil && lintErrors == 0 {
+		return nil, fmt.Errorf("helm lint failed: %w: %s", runErr, strings.TrimSpace(string(out)))
 	}
 	return issues, nil
 }

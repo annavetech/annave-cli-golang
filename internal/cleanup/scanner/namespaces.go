@@ -23,13 +23,15 @@ var skipNamespaces = map[string]bool{
 	"default":         true,
 }
 
-func scanNamespaces(ctx context.Context, cs *kubernetes.Clientset, opts port.ScanOptions) ([]domain.IdleResource, error) {
+// scanNamespaces returns empty namespaces, plus one error per namespace that could not be checked.
+func scanNamespaces(ctx context.Context, cs *kubernetes.Clientset, opts port.ScanOptions) ([]domain.IdleResource, []error, error) {
 	nsList, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("list namespaces: %w", err)
+		return nil, nil, fmt.Errorf("list namespaces: %w", err)
 	}
 
 	var idle []domain.IdleResource
+	var nsErrs []error
 	for _, nsObj := range nsList.Items {
 		if opts.Namespace != "" && nsObj.Name != opts.Namespace {
 			continue
@@ -43,7 +45,11 @@ func scanNamespaces(ctx context.Context, cs *kubernetes.Clientset, opts port.Sca
 		}
 
 		empty, detail, err := isNamespaceEmpty(ctx, cs, nsObj.Name)
-		if err != nil || !empty {
+		if err != nil {
+			nsErrs = append(nsErrs, fmt.Errorf("namespace %s not checked: %w", nsObj.Name, err))
+			continue
+		}
+		if !empty {
 			continue
 		}
 
@@ -57,7 +63,7 @@ func scanNamespaces(ctx context.Context, cs *kubernetes.Clientset, opts port.Sca
 			Detail: detail,
 		})
 	}
-	return idle, nil
+	return idle, nsErrs, nil
 }
 
 // isNamespaceEmpty returns true when a namespace has no workloads or services.

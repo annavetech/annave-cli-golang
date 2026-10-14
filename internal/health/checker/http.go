@@ -15,12 +15,18 @@ import (
 )
 
 // checkHTTP performs an HTTP(S) GET against target and returns a HealthResult.
-func checkHTTP(ctx context.Context, target domain.ServiceTarget) domain.HealthResult {
+// The error reports a failure to close the response body; the result is set either way.
+func checkHTTP(ctx context.Context, target domain.ServiceTarget) (domain.HealthResult, error) {
+	return checkHTTPWith(ctx, target, http.DefaultTransport)
+}
+
+func checkHTTPWith(ctx context.Context, target domain.ServiceTarget, rt http.RoundTripper) (result domain.HealthResult, err error) {
 	start := time.Now()
-	result := domain.HealthResult{Target: target, CheckedAt: start}
+	result = domain.HealthResult{Target: target, CheckedAt: start}
 
 	client := &http.Client{
-		Timeout: target.Timeout,
+		Transport: rt,
+		Timeout:   target.Timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return fmt.Errorf("too many redirects")
@@ -33,7 +39,7 @@ func checkHTTP(ctx context.Context, target domain.ServiceTarget) domain.HealthRe
 	if err != nil {
 		result.Status = domain.StatusDown
 		result.Message = err.Error()
-		return result
+		return result, nil
 	}
 	req.Header.Set("User-Agent", "annave-health/1.0")
 
@@ -48,9 +54,13 @@ func checkHTTP(ctx context.Context, target domain.ServiceTarget) domain.HealthRe
 			result.Status = domain.StatusDown
 			result.Message = trimError(err.Error())
 		}
-		return result
+		return result, nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close response body for %s: %w", target.Name, cerr)
+		}
+	}()
 
 	// Read body only if we need a substring match (up to 64 KB).
 	var body string
@@ -69,18 +79,18 @@ func checkHTTP(ctx context.Context, target domain.ServiceTarget) domain.HealthRe
 	if !statusOK {
 		result.Status = domain.StatusDown
 		result.Message = fmt.Sprintf("HTTP %d", resp.StatusCode)
-		return result
+		return result, nil
 	}
 
 	if target.ExpectBody != "" && !strings.Contains(body, target.ExpectBody) {
 		result.Status = domain.StatusDown
 		result.Message = fmt.Sprintf("body does not contain %q", target.ExpectBody)
-		return result
+		return result, nil
 	}
 
 	result.Status = domain.StatusUp
 	result.Message = fmt.Sprintf("HTTP %d", resp.StatusCode)
-	return result
+	return result, nil
 }
 
 // isTimeout returns true when the error represents a network or context timeout.

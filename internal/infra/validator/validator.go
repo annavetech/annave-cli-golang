@@ -15,9 +15,11 @@ import (
 )
 
 // InfraValidator implements port.Validator.
-type InfraValidator struct{}
+type InfraValidator struct {
+	run commandRunner
+}
 
-func New() *InfraValidator { return &InfraValidator{} }
+func New() *InfraValidator { return &InfraValidator{run: execRunner{}} }
 
 func (v *InfraValidator) Validate(_ context.Context, target string, opts port.ValidateOptions) (*domain.ValidationResult, error) {
 	vtype := opts.Type
@@ -27,9 +29,9 @@ func (v *InfraValidator) Validate(_ context.Context, target string, opts port.Va
 
 	switch vtype {
 	case string(domain.ValidateTypeTerraform):
-		return validateTerraform(target)
+		return validateTerraform(v.run, target)
 	case string(domain.ValidateTypeHelm):
-		return validateHelm(target)
+		return validateHelm(v.run, target)
 	case string(domain.ValidateTypeK8s):
 		return validateK8sYAML(target)
 	default:

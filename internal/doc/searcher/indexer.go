@@ -6,6 +6,7 @@ package searcher
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -26,7 +27,7 @@ func (s *DocSearcher) Search(ctx context.Context, query domain.SearchQuery, opts
 	if err != nil {
 		return nil, err
 	}
-	return search(ctx, idx, query, opts), nil
+	return search(ctx, idx, query, opts)
 }
 
 // ParseQuery splits the raw query string into individual terms.
@@ -53,6 +54,21 @@ func buildIndex(ctx context.Context, opts port.SearchOptions) (*domain.Index, er
 		Terms: make(map[string][]domain.Posting),
 	}
 
+	// Files are opened through an os.Root so a path cannot leave the search root.
+	// A root that cannot be read yields an empty index, as the walk below skips it.
+	rootDir := absRoot
+	info, err := os.Lstat(absRoot)
+	if err != nil {
+		return idx, nil
+	}
+	if !info.IsDir() {
+		rootDir = filepath.Dir(absRoot)
+	}
+	rootFS, err := os.OpenRoot(rootDir)
+	if err != nil {
+		return nil, err
+	}
+
 	err = filepath.WalkDir(absRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // skip unreadable entries
@@ -65,7 +81,8 @@ func buildIndex(ctx context.Context, opts port.SearchOptions) (*domain.Index, er
 		relPath, _ := filepath.Rel(absRoot, path)
 		depth := strings.Count(relPath, string(filepath.Separator))
 		if d.IsDir() {
-			if depth >= maxDepth || shouldSkipDir(d.Name()) {
+			// The root is searched even when its own name is hidden or a toolchain name.
+			if depth >= maxDepth || (path != absRoot && shouldSkipDir(d.Name())) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -77,15 +94,19 @@ func buildIndex(ctx context.Context, opts port.SearchOptions) (*domain.Index, er
 		}
 
 		info, err := d.Info()
-		if err != nil || info.Size() > maxSize || info.Size() == 0 {
+		// d.Info does not follow symlinks, so links, devices and pipes are skipped here.
+		if err != nil || !info.Mode().IsRegular() || info.Size() > maxSize || info.Size() == 0 {
 			return nil
 		}
 
-		f, err := os.Open(path)
+		name, err := filepath.Rel(rootDir, path)
 		if err != nil {
-			return nil
+			return fmt.Errorf("open %s: %w", relPath, err)
 		}
-		defer f.Close()
+		f, err := rootFS.Open(name)
+		if err != nil {
+			return fmt.Errorf("open %s: %w", relPath, err)
+		}
 
 		fileIdx := len(idx.Files)
 		docFile := domain.DocFile{
@@ -97,6 +118,7 @@ func buildIndex(ctx context.Context, opts port.SearchOptions) (*domain.Index, er
 		}
 
 		scanner := bufio.NewScanner(f)
+		scanner.Buffer(make([]byte, 0, 64*1024), int(maxSize)+1)
 		lineNum := 0
 		firstHeading := ""
 
@@ -115,6 +137,13 @@ func buildIndex(ctx context.Context, opts port.SearchOptions) (*domain.Index, er
 				})
 			}
 		}
+		scanErr := scanner.Err()
+		if err := f.Close(); err != nil && scanErr == nil {
+			scanErr = err
+		}
+		if scanErr != nil {
+			return fmt.Errorf("read %s: %w", relPath, scanErr)
+		}
 
 		if firstHeading != "" {
 			docFile.Title = firstHeading
@@ -124,6 +153,9 @@ func buildIndex(ctx context.Context, opts port.SearchOptions) (*domain.Index, er
 		idx.Files = append(idx.Files, docFile)
 		return nil
 	})
+	if cerr := rootFS.Close(); cerr != nil && err == nil {
+		err = cerr
+	}
 
 	return idx, err
 }

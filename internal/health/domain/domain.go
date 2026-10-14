@@ -26,8 +26,8 @@ const (
 
 // ServiceTarget describes a single service to check.
 type ServiceTarget struct {
-	Name         string        // human label; defaults to the raw address string
-	Address      string        // resolved address passed to the checker
+	Name         string // human label; defaults to the raw address string
+	Address      string // resolved address passed to the checker
 	CheckType    CheckType
 	Timeout      time.Duration
 	ExpectStatus int    // HTTP only: expected status code (0 = any 2xx)

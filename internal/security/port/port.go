@@ -14,6 +14,7 @@ type AuditOptions struct {
 	Type           domain.AuditType
 	KubeconfigPath string
 	KubeContext    string
+	Namespace      string // k8s-live only; empty means all namespaces
 }
 
 // Auditor runs a security scan against a target and returns findings.
