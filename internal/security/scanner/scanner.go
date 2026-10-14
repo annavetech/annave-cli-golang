@@ -19,15 +19,16 @@ func New() *SecurityScanner { return &SecurityScanner{} }
 
 func (s *SecurityScanner) Audit(ctx context.Context, target domain.AuditTarget, opts port.AuditOptions) (*domain.AuditReport, error) {
 	var findings []domain.Finding
+	var warnings []string
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	var firstErr error
 
-	run := func(fn func() ([]domain.Finding, error)) {
+	run := func(fn func() ([]domain.Finding, []string, error)) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			ff, err := fn()
+			ff, ww, err := fn()
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil && firstErr == nil {
@@ -35,23 +36,29 @@ func (s *SecurityScanner) Audit(ctx context.Context, target domain.AuditTarget, 
 				return
 			}
 			findings = append(findings, ff...)
+			warnings = append(warnings, ww...)
 		}()
 	}
 
 	switch opts.Type {
 	case domain.AuditTypeSAST:
 		// Run Go and TypeScript SAST concurrently.
-		run(func() ([]domain.Finding, error) { return scanSASTGo(ctx, target.Path) })
-		run(func() ([]domain.Finding, error) { return scanSASTTypeScript(ctx, target.Path) })
+		run(func() ([]domain.Finding, []string, error) { return scanSASTGo(ctx, target.Path) })
+		run(func() ([]domain.Finding, []string, error) { return scanSASTTypeScript(ctx, target.Path) })
 
 	case domain.AuditTypeK8sLive:
-		run(func() ([]domain.Finding, error) { return scanK8sLive(ctx, opts) })
+		run(func() ([]domain.Finding, []string, error) {
+			ff, err := scanK8sLive(ctx, opts)
+			return ff, nil, err
+		})
 
 	case domain.AuditTypeK8sLocal:
-		run(func() ([]domain.Finding, error) { return scanK8sLocal(ctx, target.Path) })
+		run(func() ([]domain.Finding, []string, error) {
+			return scanK8sLocal(ctx, target.Path)
+		})
 
 	default: // secrets is the default
-		run(func() ([]domain.Finding, error) { return scanSecrets(ctx, target.Path) })
+		run(func() ([]domain.Finding, []string, error) { return scanSecrets(ctx, target.Path) })
 	}
 
 	wg.Wait()
@@ -59,7 +66,9 @@ func (s *SecurityScanner) Audit(ctx context.Context, target domain.AuditTarget, 
 		return nil, firstErr
 	}
 
-	return buildAuditReport(target, opts.Type, findings), nil
+	report := buildAuditReport(target, opts.Type, findings)
+	report.Warnings = warnings
+	return report, nil
 }
 
 // buildAuditReport assembles the final AuditReport from raw findings.

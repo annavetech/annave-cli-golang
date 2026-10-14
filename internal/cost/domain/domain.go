@@ -41,12 +41,12 @@ type ResourceAttribution struct {
 
 // CostReport is the top-level result returned by the CostAnalyzer.
 type CostReport struct {
-	Provider  string               `json:"provider"`
-	Period    string               `json:"period"`
-	TotalCost float64              `json:"total_cost"`
-	Currency  Currency             `json:"currency"`
-	Records   []CostRecord         `json:"records"`
-	Anomalies []CostAnomaly        `json:"anomalies"`
+	Provider   string                `json:"provider"`
+	Period     string                `json:"period"`
+	TotalCost  float64               `json:"total_cost"`
+	Currency   Currency              `json:"currency"`
+	Records    []CostRecord          `json:"records"`
+	Anomalies  []CostAnomaly         `json:"anomalies"`
 	ByResource []ResourceAttribution `json:"by_resource,omitempty"`
-	ScannedAt time.Time            `json:"scanned_at"`
+	ScannedAt  time.Time             `json:"scanned_at"`
 }

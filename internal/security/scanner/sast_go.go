@@ -4,7 +4,6 @@
 package scanner
 
 import (
-	"bufio"
 	"context"
 	"io/fs"
 	"os"
@@ -98,29 +97,30 @@ var goRules = []rules.Rule{
 			"and can cause memory corruption. Review whether this use is necessary.",
 	},
 	{
-		ID:       "GO010",
-		Title:    "Hardcoded credential in source",
-		Severity: domain.SeverityHigh,
-		Pattern:  rules.MustCompile(`(?i)(?:password|passwd|secret|token|api_?key|auth_?key)\s*(?::?=)\s*"[^"]{6,}"`),
-		FileExts: []string{".go"},
+		ID:        "GO010",
+		Title:     "Hardcoded credential in source",
+		Severity:  domain.SeverityHigh,
+		Pattern:   rules.MustCompile(`(?i)(?:password|passwd|secret|token|api_?key|auth_?key)\s*(?::?=)\s*"[^"]{6,}"`),
+		FileExts:  []string{".go"},
+		Sensitive: true,
 		Remediation: "Use os.Getenv or a secrets manager. Never hardcode credentials in source — " +
 			"they will appear in version history even after deletion.",
 	},
 }
 
 // scanSASTGo runs Go-specific SAST rules against all .go files under root.
-func scanSASTGo(ctx context.Context, root string) ([]domain.Finding, error) {
+func scanSASTGo(ctx context.Context, root string) ([]domain.Finding, []string, error) {
 	return scanSASTFiles(ctx, root, goRules, []string{".go"})
 }
 
 // scanSASTFiles walks root for files matching exts and applies ruleSet line by line.
-func scanSASTFiles(ctx context.Context, root string, ruleSet []rules.Rule, exts []string) ([]domain.Finding, error) {
+func scanSASTFiles(ctx context.Context, root string, ruleSet []rules.Rule, exts []string) (findings []domain.Finding, warnings []string, err error) {
 	if root == "" {
 		root = "."
 	}
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	extSet := make(map[string]bool, len(exts))
@@ -128,7 +128,11 @@ func scanSASTFiles(ctx context.Context, root string, ruleSet []rules.Rule, exts 
 		extSet[e] = true
 	}
 
-	var findings []domain.Finding
+	rootFS, rootDir, err := openWalkRoot(absRoot)
+	if err != nil || rootFS == nil {
+		return nil, nil, err
+	}
+	defer closeRoot(rootFS, &err)
 
 	err = filepath.WalkDir(absRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -148,31 +152,32 @@ func scanSASTFiles(ctx context.Context, root string, ruleSet []rules.Rule, exts 
 			return nil
 		}
 		info, err := d.Info()
-		if err != nil || info.Size() == 0 || info.Size() > maxSecretFileSize {
+		// Symlinks, devices and pipes are not scanned.
+		if err != nil || !info.Mode().IsRegular() || info.Size() == 0 || info.Size() > maxSecretFileSize {
 			return nil
 		}
 
 		rel, _ := filepath.Rel(absRoot, path)
-		ff, err := applyRulesToFile(path, rel, ext, ruleSet)
-		if err != nil {
-			return nil
-		}
+		name, _ := filepath.Rel(rootDir, path)
+		ff, err := applyRulesToFile(rootFS, name, rel, ext, ruleSet)
 		findings = append(findings, ff...)
+		if err != nil {
+			warnings = append(warnings, incompleteScanWarning(rel, err))
+		}
 		return nil
 	})
-	return findings, err
+	return findings, warnings, err
 }
 
 // applyRulesToFile applies ruleSet to a single file and returns any matching findings.
-func applyRulesToFile(path, relPath, ext string, ruleSet []rules.Rule) ([]domain.Finding, error) {
-	f, err := os.Open(path)
+func applyRulesToFile(root *os.Root, name, relPath, ext string, ruleSet []rules.Rule) (findings []domain.Finding, err error) {
+	f, err := root.Open(name)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer closeFile(f, &err)
 
-	var findings []domain.Finding
-	scanner := bufio.NewScanner(f)
+	scanner := newLineScanner(f)
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
@@ -182,9 +187,14 @@ func applyRulesToFile(path, relPath, ext string, ruleSet []rules.Rule) ([]domain
 				continue
 			}
 			if loc := rule.Pattern.FindStringIndex(line); loc != nil {
-				match := strings.TrimSpace(line)
-				if len(match) > 120 {
-					match = match[:117] + "..."
+				var match string
+				if rule.Sensitive {
+					match = redactValue(line[loc[0]:loc[1]])
+				} else {
+					match = strings.TrimSpace(line)
+					if len(match) > 120 {
+						match = match[:117] + "..."
+					}
 				}
 				findings = append(findings, domain.Finding{
 					ID:          rule.ID,

@@ -24,8 +24,12 @@ func scanK8sLive(ctx context.Context, opts port.AuditOptions) ([]domain.Finding,
 	if err != nil {
 		return nil, err
 	}
+	return auditPods(ctx, cs, opts.Namespace)
+}
 
-	pods, err := cs.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+// auditPods checks every pod in namespace, or in all namespaces when namespace is empty.
+func auditPods(ctx context.Context, cs kubernetes.Interface, namespace string) ([]domain.Finding, error) {
+	pods, err := cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("list pods: %w", err)
 	}
@@ -74,75 +78,89 @@ func checkPodSecurity(pod corev1.Pod) []domain.Finding {
 		}
 	}
 
-	// per-container checks
-	for _, c := range spec.Containers {
-		cref := fmt.Sprintf("%s (container: %s)", ref, c.Name)
-
-		// privileged
-		if c.SecurityContext != nil && c.SecurityContext.Privileged != nil && *c.SecurityContext.Privileged {
-			findings = append(findings, domain.Finding{
-				ID: "K8S004", Title: "Privileged container",
-				Severity: domain.SeverityCritical, File: cref,
-				Detail:      "Container runs with full host privileges — equivalent to root on the node.",
-				Remediation: "Remove privileged: true. Use specific Linux capabilities instead.",
-			})
-		}
-
-		// running as root
-		if isRunningAsRoot(spec.SecurityContext, c.SecurityContext) {
-			findings = append(findings, domain.Finding{
-				ID: "K8S005", Title: "Container may run as root",
-				Severity: domain.SeverityHigh, File: cref,
-				Detail:      "No runAsNonRoot: true or runAsUser set — container may run as UID 0.",
-				Remediation: "Set securityContext.runAsNonRoot: true and a non-zero runAsUser.",
-			})
-		}
-
-		// no resource limits
-		if c.Resources.Limits == nil || len(c.Resources.Limits) == 0 {
-			findings = append(findings, domain.Finding{
-				ID: "K8S006", Title: "No CPU/memory limits set",
-				Severity: domain.SeverityMedium, File: cref,
-				Detail:      "Container has no resource limits — can consume all node resources.",
-				Remediation: "Set resources.limits.cpu and resources.limits.memory on every container.",
-			})
-		}
-
-		// missing readiness probe
-		if c.ReadinessProbe == nil {
-			findings = append(findings, domain.Finding{
-				ID: "K8S007", Title: "Missing readiness probe",
-				Severity: domain.SeverityLow, File: cref,
-				Detail:      "Container has no readinessProbe — traffic is sent before the app is ready.",
-				Remediation: "Add a readinessProbe (httpGet, tcpSocket, or exec) to gate traffic correctly.",
-			})
-		}
+	for i := range spec.InitContainers {
+		findings = append(findings, checkLiveContainer(&spec.InitContainers[i], initContainer, ref, spec.SecurityContext)...)
+	}
+	for i := range spec.Containers {
+		findings = append(findings, checkLiveContainer(&spec.Containers[i], appContainer, ref, spec.SecurityContext)...)
+	}
+	for i := range spec.EphemeralContainers {
+		// EphemeralContainerCommon has the same fields as Container.
+		c := (*corev1.Container)(&spec.EphemeralContainers[i].EphemeralContainerCommon)
+		findings = append(findings, checkLiveContainer(c, ephemeralContainer, ref, spec.SecurityContext)...)
 	}
 
 	return findings
 }
 
-// isRunningAsRoot returns true when neither the pod nor container security context
-// prevents running as root.
+// checkLiveContainer applies the container rules that the Kubernetes API allows for kind.
+func checkLiveContainer(c *corev1.Container, kind containerKind, ref string, podSC *corev1.PodSecurityContext) []domain.Finding {
+	cref := fmt.Sprintf("%s (%s: %s)", ref, kind.label(), c.Name)
+	var findings []domain.Finding
+
+	// privileged
+	if c.SecurityContext != nil && c.SecurityContext.Privileged != nil && *c.SecurityContext.Privileged {
+		findings = append(findings, domain.Finding{
+			ID: "K8S004", Title: "Privileged container",
+			Severity: domain.SeverityCritical, File: cref,
+			Detail:      "Container runs with full host privileges — equivalent to root on the node.",
+			Remediation: "Remove privileged: true. Use specific Linux capabilities instead.",
+		})
+	}
+
+	// running as root
+	if isRunningAsRoot(podSC, c.SecurityContext) {
+		findings = append(findings, domain.Finding{
+			ID: "K8S005", Title: "Container may run as root",
+			Severity: domain.SeverityHigh, File: cref,
+			Detail:      "No runAsNonRoot: true or runAsUser set — container may run as UID 0.",
+			Remediation: "Set securityContext.runAsNonRoot: true and a non-zero runAsUser.",
+		})
+	}
+
+	// no resource limits; ephemeral containers cannot set resources
+	if kind != ephemeralContainer && len(c.Resources.Limits) == 0 {
+		findings = append(findings, domain.Finding{
+			ID: "K8S006", Title: "No CPU/memory limits set",
+			Severity: domain.SeverityMedium, File: cref,
+			Detail:      "Container has no resource limits — can consume all node resources.",
+			Remediation: "Set resources.limits.cpu and resources.limits.memory on every container.",
+		})
+	}
+
+	// missing readiness probe; only app containers can have one
+	if kind == appContainer && c.ReadinessProbe == nil {
+		findings = append(findings, domain.Finding{
+			ID: "K8S007", Title: "Missing readiness probe",
+			Severity: domain.SeverityLow, File: cref,
+			Detail:      "Container has no readinessProbe — traffic is sent before the app is ready.",
+			Remediation: "Add a readinessProbe (httpGet, tcpSocket, or exec) to gate traffic correctly.",
+		})
+	}
+
+	return findings
+}
+
+// isRunningAsRoot reports whether a container may run as UID 0. Container settings override
+// pod settings; an explicit UID decides, and runAsNonRoot applies only when no UID is set.
 func isRunningAsRoot(podSC *corev1.PodSecurityContext, cSC *corev1.SecurityContext) bool {
-	// If pod-level runAsNonRoot is set and true, we're fine.
-	if podSC != nil && podSC.RunAsNonRoot != nil && *podSC.RunAsNonRoot {
-		return false
+	var nonRoot *bool
+	var uid *int64
+	if podSC != nil {
+		nonRoot, uid = podSC.RunAsNonRoot, podSC.RunAsUser
 	}
-	// If pod-level runAsUser is a known non-root UID, we're fine.
-	if podSC != nil && podSC.RunAsUser != nil && *podSC.RunAsUser > 0 {
-		return false
-	}
-	// Container-level overrides.
 	if cSC != nil {
-		if cSC.RunAsNonRoot != nil && *cSC.RunAsNonRoot {
-			return false
+		if cSC.RunAsNonRoot != nil {
+			nonRoot = cSC.RunAsNonRoot
 		}
-		if cSC.RunAsUser != nil && *cSC.RunAsUser > 0 {
-			return false
+		if cSC.RunAsUser != nil {
+			uid = cSC.RunAsUser
 		}
 	}
-	return true
+	if uid != nil {
+		return *uid == 0
+	}
+	return nonRoot == nil || !*nonRoot
 }
 
 // newSecurityClient builds a Kubernetes clientset from opts or the default kubeconfig resolution.

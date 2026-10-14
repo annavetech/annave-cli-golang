@@ -7,20 +7,24 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
 
 // OpenFile opens path in the OS default application (browser for HTML, editor for text).
 func OpenFile(path string) error {
+	if err := validateFilePath(path); err != nil {
+		return err
+	}
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", path)
+		cmd = command("open", path)
 	case "linux":
-		cmd = exec.Command("xdg-open", path)
+		cmd = command("xdg-open", path)
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", path)
+		cmd = command("rundll32", "url.dll,FileProtocolHandler", path)
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
@@ -30,28 +34,68 @@ func OpenFile(path string) error {
 // OpenInEditor opens path at the given line in $EDITOR (or a detected fallback).
 // line=0 means no line hint.
 func OpenInEditor(path string, line int) error {
-	editor := resolveEditor()
-	args := editorArgs(editor, path, line)
-	cmd := exec.Command(editor, args...)
+	cmd, err := editorCommand(path, line)
+	if err != nil {
+		return err
+	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
-func resolveEditor() string {
-	if e := os.Getenv("EDITOR"); e != "" {
-		return e
+// editorCommand builds the editor Cmd for path: the program, the extra words of its
+// $EDITOR or $VISUAL value, then the line hint and path.
+func editorCommand(path string, line int) (*exec.Cmd, error) {
+	if err := validateFilePath(path); err != nil {
+		return nil, err
 	}
-	if e := os.Getenv("VISUAL"); e != "" {
-		return e
+	editor, extra := resolveEditor()
+	return command(editor, append(extra, editorArgs(editorName(editor), path, line)...)...), nil
+}
+
+// command builds a Cmd; no shell parses the name or the arguments.
+func command(name string, args ...string) *exec.Cmd {
+	return exec.Command(name, args...) //nolint:gosec // G204: runs the user's own $EDITOR/$VISUAL or the OS opener on a validated absolute path.
+}
+
+// validateFilePath accepts only an absolute path to an existing regular file,
+// so the program it is passed to cannot read it as an option.
+func validateFilePath(path string) error {
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("open %q: path must be absolute", path)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("open %q: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("open %q: not a regular file", path)
+	}
+	return nil
+}
+
+// resolveEditor returns the first word of $EDITOR or $VISUAL as the program, exactly as given,
+// and the remaining words as extra arguments; without either it uses the first editor found on PATH.
+func resolveEditor() (string, []string) {
+	for _, env := range []string{"EDITOR", "VISUAL"} {
+		fields := strings.Fields(os.Getenv(env))
+		if len(fields) > 0 {
+			return fields[0], fields[1:]
+		}
 	}
 	for _, e := range []string{"code", "nvim", "vim", "nano"} {
 		if _, err := exec.LookPath(e); err == nil {
-			return e
+			return e, nil
 		}
 	}
-	return "vi"
+	return "vi", nil
+}
+
+// editorName reduces a program path such as "/usr/bin/nvim" to its name.
+func editorName(program string) string {
+	base := filepath.Base(program)
+	return strings.TrimSuffix(base, filepath.Ext(base))
 }
 
 func editorArgs(editor, path string, line int) []string {

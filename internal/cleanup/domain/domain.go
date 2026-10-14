@@ -51,4 +51,6 @@ type CleanupPlan struct {
 	Resources []IdleResource `json:"resources"`
 	ScannedAt time.Time      `json:"scanned_at"`
 	DryRun    bool           `json:"dry_run"`
+	// Warnings lists resource types or namespaces that could not be scanned.
+	Warnings []string `json:"warnings,omitempty"`
 }

@@ -7,6 +7,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -112,17 +114,34 @@ var skipSecretDirs = map[string]bool{
 
 const maxSecretFileSize = 5 * 1024 * 1024 // 5 MB
 
+// newLineScanner returns a line scanner that accepts any line of a file up to maxSecretFileSize.
+// The buffer starts small and grows only to the longest line.
+func newLineScanner(r io.Reader) *bufio.Scanner {
+	s := bufio.NewScanner(r)
+	s.Buffer(make([]byte, 0, 64*1024), maxSecretFileSize+1)
+	return s
+}
+
+// incompleteScanWarning describes a file whose scan stopped early; its earlier findings are kept.
+func incompleteScanWarning(relPath string, err error) string {
+	return fmt.Sprintf("incomplete scan of %s: %v", relPath, err)
+}
+
 // scanSecrets walks root and matches all secret patterns against every non-binary file.
-func scanSecrets(ctx context.Context, root string) ([]domain.Finding, error) {
+func scanSecrets(ctx context.Context, root string) (findings []domain.Finding, warnings []string, err error) {
 	if root == "" {
 		root = "."
 	}
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	var findings []domain.Finding
+	rootFS, rootDir, err := openWalkRoot(absRoot)
+	if err != nil || rootFS == nil {
+		return nil, nil, err
+	}
+	defer closeRoot(rootFS, &err)
 
 	err = filepath.WalkDir(absRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -139,29 +158,31 @@ func scanSecrets(ctx context.Context, root string) ([]domain.Finding, error) {
 		}
 
 		info, err := d.Info()
-		if err != nil || info.Size() == 0 || info.Size() > maxSecretFileSize {
+		// Symlinks, devices and pipes are not scanned.
+		if err != nil || !info.Mode().IsRegular() || info.Size() == 0 || info.Size() > maxSecretFileSize {
 			return nil
 		}
 
 		rel, _ := filepath.Rel(absRoot, path)
-		fileFindings, err := scanFileForSecrets(path, rel)
-		if err != nil {
-			return nil // skip unreadable files
-		}
+		name, _ := filepath.Rel(rootDir, path)
+		fileFindings, err := scanFileForSecrets(rootFS, name, rel)
 		findings = append(findings, fileFindings...)
+		if err != nil {
+			warnings = append(warnings, incompleteScanWarning(rel, err))
+		}
 		return nil
 	})
 
-	return findings, err
+	return findings, warnings, err
 }
 
 // scanFileForSecrets applies all secret rules to a single file.
-func scanFileForSecrets(path, relPath string) ([]domain.Finding, error) {
-	f, err := os.Open(path)
+func scanFileForSecrets(root *os.Root, name, relPath string) (findings []domain.Finding, err error) {
+	f, err := root.Open(name)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer closeFile(f, &err)
 
 	// Binary detection: read first 512 bytes and check for null bytes.
 	header := make([]byte, 512)
@@ -173,10 +194,9 @@ func scanFileForSecrets(path, relPath string) ([]domain.Finding, error) {
 		return nil, err
 	}
 
-	ext := strings.ToLower(filepath.Ext(path))
-	var findings []domain.Finding
+	ext := strings.ToLower(filepath.Ext(name))
 
-	scanner := bufio.NewScanner(f)
+	scanner := newLineScanner(f)
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
@@ -200,6 +220,12 @@ func scanFileForSecrets(path, relPath string) ([]domain.Finding, error) {
 		}
 	}
 	return findings, scanner.Err()
+}
+
+// redactValue keeps the match up to and including its first quote or opening parenthesis
+// and masks the rest, so no part of the value is shown.
+func redactValue(s string) string {
+	return s[:strings.IndexAny(s, "\"'`(")+1] + "********"
 }
 
 // redact shows the first 12 characters of a match then masks the rest.

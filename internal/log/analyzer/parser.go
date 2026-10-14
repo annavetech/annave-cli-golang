@@ -199,33 +199,53 @@ func parseTimeStr(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("cannot parse time: %q", s)
 }
 
-// parseLines reads up to maxLines from r and returns all successfully parsed entries.
-func parseLines(r io.Reader, maxLines int) (entries []domain.LogEntry, format domain.LogFormat, totalLines int, parseErrors int) {
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+// maxLogLineBytes is the longest line prefix that is parsed; the rest of a longer line is discarded.
+const maxLogLineBytes = 1024 * 1024
 
-	for scanner.Scan() {
+// parseLines reads up to maxLines from r and returns all successfully parsed entries.
+// Lines over maxLogLineBytes are cut to that length and counted in truncated.
+func parseLines(r io.Reader, maxLines int) (entries []domain.LogEntry, format domain.LogFormat, totalLines, parseErrors, truncated int, err error) {
+	br := bufio.NewReaderSize(r, maxLogLineBytes)
+
+	for {
+		chunk, readErr := br.ReadSlice('\n')
+		line := string(chunk)
+		if readErr == bufio.ErrBufferFull {
+			truncated++
+			for readErr == bufio.ErrBufferFull {
+				_, readErr = br.ReadSlice('\n')
+			}
+		}
+		if readErr != nil && readErr != io.EOF {
+			return nil, "", 0, 0, 0, fmt.Errorf("read log: %w", readErr)
+		}
+		if readErr == io.EOF && line == "" {
+			break
+		}
+
 		totalLines++
 		if maxLines > 0 && totalLines > maxLines {
 			break
 		}
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
-			continue
+		line = strings.TrimSuffix(line, "\n")
+		line = strings.TrimSuffix(line, "\r")
+		if strings.TrimSpace(line) != "" {
+			if format == "" {
+				format = detectFormat(line)
+			}
+			if e := parseLine(line, totalLines, format); e.Message != "" {
+				entries = append(entries, e)
+			} else {
+				parseErrors++
+			}
 		}
-		if format == "" {
-			format = detectFormat(line)
+		if readErr == io.EOF {
+			break
 		}
-		e := parseLine(line, totalLines, format)
-		if e.Message == "" {
-			parseErrors++
-			continue
-		}
-		entries = append(entries, e)
 	}
 
 	if format == "" {
 		format = domain.FormatPlain
 	}
-	return
+	return entries, format, totalLines, parseErrors, truncated, nil
 }

@@ -43,9 +43,9 @@ type Change struct {
 
 // TerraformPlan holds the parsed contents of a terraform show -json plan file.
 type TerraformPlan struct {
-	PlanFile  string    `json:"plan_file"`
-	Changes   []Change  `json:"changes"`
-	ParsedAt  time.Time `json:"parsed_at"`
+	PlanFile string    `json:"plan_file"`
+	Changes  []Change  `json:"changes"`
+	ParsedAt time.Time `json:"parsed_at"`
 }
 
 // HelmRelease is a deployed Helm release as reported by helm list.
@@ -71,4 +71,6 @@ type ValidationResult struct {
 	Passed      bool              `json:"passed"`
 	Issues      []ValidationIssue `json:"issues"`
 	ValidatedAt time.Time         `json:"validated_at"`
+	// Warnings lists files that were skipped and why.
+	Warnings []string `json:"warnings,omitempty"`
 }

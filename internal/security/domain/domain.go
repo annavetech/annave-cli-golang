@@ -50,4 +50,6 @@ type AuditReport struct {
 	Findings  []Finding        `json:"findings"`
 	ScannedAt time.Time        `json:"scanned_at"`
 	Summary   map[Severity]int `json:"summary"`
+	// Warnings lists files or sources that were only partly scanned.
+	Warnings []string `json:"warnings,omitempty"`
 }

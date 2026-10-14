@@ -82,4 +82,5 @@ type AnalysisReport struct {
 	TimeRange   TimeRange `json:"time_range,omitempty"`
 	Findings    []Finding `json:"findings"`
 	ParseErrors int       `json:"parse_errors,omitempty"`
+	Truncated   int       `json:"truncated_lines,omitempty"` // lines cut to 1 MiB
 }

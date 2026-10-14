@@ -5,6 +5,7 @@ package checker
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strings"
 	"sync"
@@ -35,6 +36,7 @@ func (hc *HealthChecker) Check(ctx context.Context, targets []domain.ServiceTarg
 
 	sem := make(chan struct{}, concurrency)
 	results := make([]domain.HealthResult, len(targets))
+	errs := make([]error, len(targets))
 	var wg sync.WaitGroup
 
 	for i, t := range targets {
@@ -43,29 +45,31 @@ func (hc *HealthChecker) Check(ctx context.Context, targets []domain.ServiceTarg
 		go func(idx int, target domain.ServiceTarget) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[idx] = checkOne(ctx, target)
+			results[idx], errs[idx] = checkOne(ctx, target)
 		}(i, t)
 	}
 	wg.Wait()
 
-	return buildReport(results), nil
+	// The report is complete even when a close error is returned with it.
+	return buildReport(results), errors.Join(errs...)
 }
 
-func checkOne(ctx context.Context, target domain.ServiceTarget) domain.HealthResult {
+// checkOne runs the check for target; the error reports a failure to release its connection.
+func checkOne(ctx context.Context, target domain.ServiceTarget) (domain.HealthResult, error) {
 	switch target.CheckType {
 	case domain.CheckHTTP:
 		return checkHTTP(ctx, target)
 	case domain.CheckTCP:
 		return checkTCP(ctx, target)
 	case domain.CheckDNS:
-		return checkDNS(ctx, target)
+		return checkDNS(ctx, target), nil
 	}
 	return domain.HealthResult{
 		Target:    target,
 		Status:    domain.StatusUnknown,
 		Message:   "unknown check type",
 		CheckedAt: time.Now(),
-	}
+	}, nil
 }
 
 func buildReport(results []domain.HealthResult) *domain.HealthReport {

@@ -5,7 +5,6 @@ package analyzer
 
 import (
 	"context"
-	"fmt"
 
 	"annave.tech/cli/internal/cost/domain"
 	"annave.tech/cli/internal/cost/port"
@@ -21,6 +20,6 @@ func (g *gcpAnalyzer) Analyze(_ context.Context, _ port.AnalyzeOptions) (*domain
 	return nil, shared.New(
 		shared.ErrCodeNotImplemented,
 		shared.StageRuntime,
-		fmt.Sprintf("GCP cost analysis is not yet implemented — use --provider aws"),
+		"GCP cost analysis is not yet implemented — use --provider aws",
 	)
 }
