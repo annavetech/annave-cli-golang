@@ -6,9 +6,9 @@ package auditor
 import (
 	"context"
 
-	"annave.tech/cli/internal/security/domain"
-	"annave.tech/cli/internal/security/port"
-	shared "annave.tech/cli/internal/shared/errors"
+	"github.com/annavetech/tend/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/port"
+	shared "github.com/annavetech/tend/internal/shared/errors"
 )
 
 // StubAuditor satisfies port.Auditor while the module is in development.

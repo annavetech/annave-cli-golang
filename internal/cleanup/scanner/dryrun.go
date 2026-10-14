@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"annave.tech/cli/internal/cleanup/domain"
+	"github.com/annavetech/tend/internal/cleanup/domain"
 )
 
 // GroupByType groups idle resources by their ResourceType.

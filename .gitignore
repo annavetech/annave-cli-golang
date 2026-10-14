@@ -1,7 +1,7 @@
 # Compiled binary
-/annave
+/tend
 
-# Environment — never commit secrets
+# Environment files: never commit secrets
 .env
 .env.*
 !.env.example

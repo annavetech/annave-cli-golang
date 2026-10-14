@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"annave.tech/cli/internal/security/domain"
-	"annave.tech/cli/internal/security/port"
-	"annave.tech/cli/internal/security/scanner"
-	"annave.tech/cli/internal/shared/output"
+	"github.com/annavetech/tend/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/port"
+	"github.com/annavetech/tend/internal/security/scanner"
+	"github.com/annavetech/tend/internal/shared/output"
 )
 
 var (
@@ -36,10 +36,10 @@ Scan types:
   k8s-local  Validate local Kubernetes YAML manifests
 
 Examples:
-  annave security audit .
-  annave security audit ./src --type sast
-  annave security audit --type k8s-live --context production
-  annave security audit ./k8s --type k8s-local --format table`,
+  tend security audit .
+  tend security audit ./src --type sast
+  tend security audit --type k8s-live --context production
+  tend security audit ./k8s --type k8s-local --format table`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runSecurityAudit,
 }
@@ -118,7 +118,7 @@ func parseAuditType(s string) (domain.AuditType, error) {
 	case "k8s-local":
 		return domain.AuditTypeK8sLocal, nil
 	default:
-		return "", fmt.Errorf("unknown type %q — use secrets, sast, k8s-live, or k8s-local", s)
+		return "", fmt.Errorf("unknown type %q: use secrets, sast, k8s-live, or k8s-local", s)
 	}
 }
 
@@ -134,7 +134,7 @@ func printAuditReport(p *output.Printer, report *domain.AuditReport) {
 }
 
 func printAuditPlain(p *output.Printer, report *domain.AuditReport) {
-	p.Section(fmt.Sprintf("Security audit — %s [%s]", report.Target.Path, report.Target.Type))
+	p.Section(fmt.Sprintf("Security audit: %s [%s]", report.Target.Path, report.Target.Type))
 	p.KeyVal("scanned at", report.ScannedAt.Format("2006-01-02 15:04:05"))
 	p.KeyVal("findings", fmt.Sprintf("%d", len(report.Findings)))
 
@@ -169,7 +169,7 @@ func printAuditPlain(p *output.Printer, report *domain.AuditReport) {
 }
 
 func printAuditTable(p *output.Printer, report *domain.AuditReport) {
-	p.Section(fmt.Sprintf("Security audit — %s [%s]", report.Target.Path, report.Target.Type))
+	p.Section(fmt.Sprintf("Security audit: %s [%s]", report.Target.Path, report.Target.Type))
 	p.KeyVal("findings", fmt.Sprintf("%d", len(report.Findings)))
 	p.Line("")
 

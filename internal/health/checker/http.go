@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"annave.tech/cli/internal/health/domain"
+	"github.com/annavetech/tend/internal/health/domain"
 )
 
 // checkHTTP performs an HTTP(S) GET against target and returns a HealthResult.
@@ -41,7 +41,7 @@ func checkHTTPWith(ctx context.Context, target domain.ServiceTarget, rt http.Rou
 		result.Message = err.Error()
 		return result, nil
 	}
-	req.Header.Set("User-Agent", "annave-health/1.0")
+	req.Header.Set("User-Agent", "tend-health/1.0")
 
 	resp, err := client.Do(req)
 	result.Latency = time.Since(start)

@@ -15,9 +15,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"annave.tech/cli/internal/cleanup/domain"
-	"annave.tech/cli/internal/cleanup/port"
-	"annave.tech/cli/internal/shared/config"
+	"github.com/annavetech/tend/internal/cleanup/domain"
+	"github.com/annavetech/tend/internal/cleanup/port"
+	"github.com/annavetech/tend/internal/shared/config"
 )
 
 // systemNamespaces are always skipped when scanning for idle resources.

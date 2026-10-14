@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""annave CLI .github/scripts test suite.
+"""tend .github/scripts test suite.
 Covers the repo-automation scripts only: label/status logic, chat-ops authorization, label sync."""
 
 import io
@@ -35,7 +35,7 @@ EMOJI_PATTERN = re.compile(
     "]"
 )
 
-TEST_REPO = "annavetech/annave-cli-golang"
+TEST_REPO = "annavetech/tend"
 
 
 def ok(name):

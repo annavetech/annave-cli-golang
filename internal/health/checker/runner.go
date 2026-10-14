@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"annave.tech/cli/internal/health/domain"
-	"annave.tech/cli/internal/health/port"
-	"annave.tech/cli/internal/shared/config"
+	"github.com/annavetech/tend/internal/health/domain"
+	"github.com/annavetech/tend/internal/health/port"
+	"github.com/annavetech/tend/internal/shared/config"
 )
 
 // defaultResolver is package-level so dns.go can use it without importing net separately.
@@ -90,11 +90,11 @@ func buildReport(results []domain.HealthResult) *domain.HealthReport {
 
 // ParseTarget parses a target string into a ServiceTarget.
 //
-//	https://example.com      → HTTP check
-//	tcp://host:port          → TCP check
-//	dns://hostname           → DNS check
-//	host:port                → TCP (auto-detected)
-//	hostname                 → DNS (auto-detected)
+//	https://example.com      HTTP check
+//	tcp://host:port          TCP check
+//	dns://hostname           DNS check
+//	host:port                TCP (auto-detected)
+//	hostname                 DNS (auto-detected)
 func ParseTarget(s string, defaultTimeout time.Duration) domain.ServiceTarget {
 	t := domain.ServiceTarget{
 		Name:    s,

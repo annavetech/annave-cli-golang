@@ -6,7 +6,7 @@ package port
 import (
 	"context"
 
-	"annave.tech/cli/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/domain"
 )
 
 // AuditOptions parameterises the security audit.

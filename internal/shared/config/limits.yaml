@@ -1,22 +1,22 @@
-# ANNÁVE CLI — Per-Module Operational Limits
+# tend: Per-Module Operational Limits
 #
 # These values are embedded at build time.
-# To change a limit: edit this file, then rebuild with go build ./cmd/annave.
-# There is no runtime config file — a binary behaves identically on every machine.
+# To change a limit: edit this file, then rebuild with go build ./cmd/tend.
+# There is no runtime config file, so a binary behaves identically on every machine.
 
 log:
   # Maximum log file size accepted, in megabytes.
   # Files larger than this are rejected at input with ERR_INVALID_INPUT.
   #
   # What breaks with wrong values:
-  #   Too low  — legitimate log files from high-traffic services are rejected.
-  #              A busy nginx access log can reach 1–2 GB per rotation.
-  #   Too high — very large files increase memory usage during analysis.
+  #   Too low:   legitimate log files from high-traffic services are rejected.
+  #              A busy nginx access log can reach 1 to 2 GB per rotation.
+  #   Too high:  very large files increase memory usage during analysis.
   #              The entire file is read into memory for pattern detection.
   #
   # Common values (MB):
-  #   64     (light traffic — most app logs fit here)
-  #   256    (default — covers most production logs)
+  #   64     (light traffic: most app logs fit here)
+  #   256    (default: covers most production logs)
   #   1024   (high-traffic services; watch memory usage)
   max_file_size_mb: 256
 
@@ -24,8 +24,8 @@ log:
   # Lines beyond this limit are silently truncated.
   #
   # What breaks with wrong values:
-  #   Too low  — log files with many INFO lines may truncate before reaching errors.
-  #   Too high — very large line counts increase analysis time proportionally.
+  #   Too low:   log files with many INFO lines may truncate before reaching errors.
+  #   Too high:  very large line counts increase analysis time proportionally.
   #
   # Reference: 1,000,000 lines at ~150 bytes/line ≈ 150 MB of log data.
   max_lines: 1000000
@@ -35,14 +35,14 @@ health:
   # If --timeout exceeds this value, it is clamped to this limit.
   #
   # What breaks with wrong values:
-  #   Too low  — services with high cold-start latency (Lambda, Fargate) time out
-  #              even when healthy. A Fargate cold start can take 5–8 seconds.
-  #   Too high — a slow or hung target holds the check open for the full duration,
+  #   Too low:   services with high cold-start latency (Lambda, Fargate) time out
+  #              even when healthy. A Fargate cold start can take 5 to 8 seconds.
+  #   Too high:  a slow or hung target holds the check open for the full duration,
   #              blocking the result when many targets are checked in parallel.
   #
   # Common values (seconds):
   #   5      (fast internal services)
-  #   10     (default — covers most HTTP services with reasonable latency)
+  #   10     (default: covers most HTTP services with reasonable latency)
   #   30     (services behind a load balancer or with cold-start delays)
   timeout_seconds: 10
 
@@ -50,8 +50,8 @@ health:
   # Targets beyond this limit are silently ignored.
   #
   # What breaks with wrong values:
-  #   Too low  — teams with many upstream dependencies cannot check all in one command.
-  #   Too high — a very large target list increases goroutine count proportionally
+  #   Too low:   teams with many upstream dependencies cannot check all in one command.
+  #   Too high:  a very large target list increases goroutine count proportionally
   #              (all checks run concurrently by default).
   max_targets: 50
 
@@ -60,9 +60,9 @@ doc:
   # Files larger than this are skipped during index build.
   #
   # What breaks with wrong values:
-  #   Too low  — generated API references, large YAML specs, or bundled changelogs
+  #   Too low:   generated API references, large YAML specs, or bundled changelogs
   #              are skipped and never returned in search results.
-  #   Too high — very large files slow down indexing and increase peak memory.
+  #   Too high:  very large files slow down indexing and increase peak memory.
   max_file_size_mb: 10
 
   # Maximum number of search results returned.
@@ -72,8 +72,8 @@ doc:
   # Directories nested deeper than this are skipped.
   #
   # What breaks with wrong values:
-  #   Too low  — deeply nested docs (e.g. monorepos with packages/*/docs/**) are missed.
-  #   Too high — has no real cost in a typical docs tree; only matters if symlink loops exist.
+  #   Too low:   deeply nested docs (e.g. monorepos with packages/*/docs/**) are missed.
+  #   Too high:  has no real cost in a typical docs tree; only matters if symlink loops exist.
   #
   # Depth > 10 almost always indicates a structural issue in the documentation tree.
   max_depth: 10
@@ -83,13 +83,13 @@ cleanup:
   # If the cluster API is slow, this may need to be increased.
   #
   # What breaks with wrong values:
-  #   Too low  — scans on large clusters time out before all namespaces are listed.
+  #   Too low:   scans on large clusters time out before all namespaces are listed.
   #              Each resource type (pods, pvcs, configmaps, namespaces) requires one API call.
-  #   Too high — a hung or unreachable cluster API holds the command open for the full duration.
+  #   Too high:  a hung or unreachable cluster API holds the command open for the full duration.
   #
   # Common values (seconds):
   #   15     (small clusters, fast API)
-  #   30     (default — covers most clusters with <100 namespaces)
+  #   30     (default: covers most clusters with <100 namespaces)
   #   120    (large clusters with many namespaces or slow API server)
   timeout_seconds: 30
 
@@ -97,8 +97,8 @@ cleanup:
   # Resources beyond this cap are silently dropped.
   #
   # What breaks with wrong values:
-  #   Too low  — large clusters with significant waste have results silently truncated.
-  #   Too high — no practical downside; just increases output size.
+  #   Too low:   large clusters with significant waste have results silently truncated.
+  #   Too high:  no practical downside; just increases output size.
   #
   # More than 1,000 idle resources almost always indicates a hygiene problem
   # that should be addressed before increasing this limit further.

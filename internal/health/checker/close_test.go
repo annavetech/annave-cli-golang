@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"annave.tech/cli/internal/health/domain"
+	"github.com/annavetech/tend/internal/health/domain"
 )
 
 var errClose = errors.New("close failed")

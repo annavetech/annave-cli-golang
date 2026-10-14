@@ -1,0 +1,79 @@
+name: Release
+
+# Builds and publishes a release on a v* tag push in annavetech/tend.
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  # A tag on code that fails vet or tests does not publish.
+  test:
+    if: github.repository == 'annavetech/tend'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  goreleaser:
+    needs: test
+    runs-on: ubuntu-latest
+    # contents: write creates the release. The cask push uses HOMEBREW_TAP_TOKEN.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: "v2.18.3"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Needs write access to annavetech/homebrew-tap.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      - name: Fail if the release has no assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          count="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')"
+          echo "release $GITHUB_REF_NAME has $count assets"
+          test "$count" -gt 0
+
+  go-install:
+    needs: goreleaser
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Install the tagged module and check its version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        # Run outside the checkout so go install resolves the published module.
+        working-directory: ${{ runner.temp }}
+        run: |
+          go install "github.com/annavetech/tend/cmd/tend@${REF_NAME}"
+          got="$("$(go env GOPATH)/bin/tend" version)"
+          echo "$got"
+          test "$got" = "tend version ${REF_NAME#v}"

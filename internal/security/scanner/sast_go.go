@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"annave.tech/cli/internal/security/domain"
-	"annave.tech/cli/internal/security/scanner/rules"
+	"github.com/annavetech/tend/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/scanner/rules"
 )
 
 var goRules = []rules.Rule{
@@ -103,7 +103,7 @@ var goRules = []rules.Rule{
 		Pattern:   rules.MustCompile(`(?i)(?:password|passwd|secret|token|api_?key|auth_?key)\s*(?::?=)\s*"[^"]{6,}"`),
 		FileExts:  []string{".go"},
 		Sensitive: true,
-		Remediation: "Use os.Getenv or a secrets manager. Never hardcode credentials in source — " +
+		Remediation: "Use os.Getenv or a secrets manager. Never hardcode credentials in source, because " +
 			"they will appear in version history even after deletion.",
 	},
 }

@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"annave.tech/cli/internal/log/port"
+	"github.com/annavetech/tend/internal/log/port"
 )
 
 // result is the captured outcome of one CLI run.
@@ -147,7 +147,7 @@ func TestRuntimeErrorPrintsOneLineWithoutUsage(t *testing.T) {
 
 func TestFlagErrorPointsAtHelp(t *testing.T) {
 	r := runCLI(t, t.Context(), "", "log", "analyze", "--bogus")
-	want := []string{"error: unknown flag: --bogus", "Run 'annave log analyze --help' for usage."}
+	want := []string{"error: unknown flag: --bogus", "Run 'tend log analyze --help' for usage."}
 	if got := lines(r.stderr); r.code != 1 || len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("code %d, stderr %q, want 1 and %q", r.code, r.stderr, want)
 	}
@@ -155,14 +155,14 @@ func TestFlagErrorPointsAtHelp(t *testing.T) {
 
 func TestArgErrorPointsAtHelp(t *testing.T) {
 	r := runCLI(t, t.Context(), "", "doc", "search")
-	if got := lines(r.stderr); r.code != 1 || len(got) != 2 || got[1] != "Run 'annave doc search --help' for usage." {
+	if got := lines(r.stderr); r.code != 1 || len(got) != 2 || got[1] != "Run 'tend doc search --help' for usage." {
 		t.Fatalf("code %d, stderr %q, want 1 and a --help line", r.code, r.stderr)
 	}
 }
 
 func TestUnknownCommandPointsAtHelp(t *testing.T) {
 	r := runCLI(t, t.Context(), "", "bogus")
-	if got := lines(r.stderr); r.code != 1 || len(got) != 2 || got[1] != "Run 'annave --help' for usage." {
+	if got := lines(r.stderr); r.code != 1 || len(got) != 2 || got[1] != "Run 'tend --help' for usage." {
 		t.Fatalf("code %d, stderr %q, want 1 and a --help line", r.code, r.stderr)
 	}
 }

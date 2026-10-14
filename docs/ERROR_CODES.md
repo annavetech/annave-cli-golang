@@ -1,9 +1,7 @@
 <!--
-title:       ANNÁVE CLI — Error Codes Reference
-description: All AnnaveError codes, their stage, when each is triggered,
+title:       tend: Error Codes Reference
+description: All tend error codes, their stage, when each is triggered,
              and how to handle them in scripts.
-author:      Anna Veretennykova
-website:     www.annave.tech
 version:     0.1.0
 created:     2026-05-16
 updated:     2026-05-16
@@ -11,7 +9,7 @@ updated:     2026-05-16
 
 # Error Codes Reference
 
-All errors from ANNÁVE CLI use the same structured format:
+All errors from tend use the same structured format:
 
 **Plain mode (stderr):**
 ```
@@ -45,7 +43,7 @@ There are no sequence numbers. The slug is the unique identifier across all modu
 |---|---|
 | Stage | `runtime` |
 
-**When triggered:** A feature that exists in the CLI but has no working adapter yet. Currently: `annave cost scan --provider gcp` and `--provider azure`.
+**When triggered:** A feature that exists in the CLI but has no working adapter yet. Currently: `tend cost scan --provider gcp` and `--provider azure`.
 
 **Script handling:** The command exits `1`. Use `--provider aws` instead.
 
@@ -127,11 +125,11 @@ There are no sequence numbers. The slug is the unique identifier across all modu
 
 | Stage | Meaning |
 |---|---|
-| `input` | Error occurred before processing started — bad flag, missing file, invalid format |
+| `input` | Error occurred before processing started: bad flag, missing file, invalid format |
 | `analysis` | Error occurred during the analysis or parsing phase |
 | `output` | Error occurred while formatting or writing the result |
-| `runtime` | Error from the adapter at runtime — API call, subprocess, network |
-| `network` | Network-specific error — timeout, connection refused, DNS failure |
+| `runtime` | Error from the adapter at runtime: API call, subprocess, network |
+| `network` | Network-specific error: timeout, connection refused, DNS failure |
 | `index` | Error during index building (doc search) |
 
 ---
@@ -148,4 +146,4 @@ There are no sequence numbers. The slug is the unique identifier across all modu
 | `ERR_NOT_FOUND` | input | 1 |
 | `ERR_PARSE_FAILED` | analysis | 1 |
 
-Note: a command that runs successfully but reports findings, down targets, anomalies, idle resources, or a failed validation exits with code `2`. Execution errors exit with code `1`. A clean run exits `0`. This means `annave security audit .` returning 10 findings exits `2`, so a CI step fails without parsing the output.
+Note: a command that runs successfully but reports findings, down targets, anomalies, idle resources, or a failed validation exits with code `2`. Execution errors exit with code `1`. A clean run exits `0`. This means `tend security audit .` returning 10 findings exits `2`, so a CI step fails without parsing the output.

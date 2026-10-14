@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"annave.tech/cli/internal/cost/domain"
+	"github.com/annavetech/tend/internal/cost/domain"
 )
 
 // AnalyzeOptions parameterises the cost analysis.

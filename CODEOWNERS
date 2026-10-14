@@ -5,7 +5,7 @@
 # Default owner for anything not matched below.
 * @annaveretennykova
 
-# The annave command and its subcommands.
+# The tend command and its subcommands.
 /cmd/ @annaveretennykova
 
 # One package per command module.
@@ -26,5 +26,3 @@
 
 # Repo automation and release packaging.
 /.github/ @annaveretennykova
-/scripts/ @annaveretennykova
-/homebrew/ @annaveretennykova

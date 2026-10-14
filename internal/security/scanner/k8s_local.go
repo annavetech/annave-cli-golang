@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 
-	"annave.tech/cli/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/domain"
 )
 
 // k8sManifest is a minimal representation of any Kubernetes resource manifest.
@@ -218,7 +218,7 @@ func checkManifestDoc(data []byte, ref string) ([]domain.Finding, error) {
 		findings = append(findings, domain.Finding{
 			ID: "K8S001", Title: "Pod uses hostNetwork",
 			Severity: domain.SeverityHigh, File: docRef,
-			Detail:      "Manifest sets hostNetwork: true — shares node network namespace.",
+			Detail:      "Manifest sets hostNetwork: true, so the pod shares the node network namespace.",
 			Remediation: "Remove hostNetwork: true unless absolutely required.",
 		})
 	}
@@ -226,7 +226,7 @@ func checkManifestDoc(data []byte, ref string) ([]domain.Finding, error) {
 		findings = append(findings, domain.Finding{
 			ID: "K8S002", Title: "Pod uses hostPID",
 			Severity: domain.SeverityHigh, File: docRef,
-			Detail:      "Manifest sets hostPID: true — can see all node processes.",
+			Detail:      "Manifest sets hostPID: true, so the pod can see all node processes.",
 			Remediation: "Remove hostPID: true unless absolutely required.",
 		})
 	}
@@ -308,7 +308,7 @@ func checkLocalContainer(c k8sContainer, kind containerKind, docRef string, podS
 		findings = append(findings, domain.Finding{
 			ID: "K8S008", Title: "Unpinned image tag",
 			Severity: domain.SeverityLow, File: cref,
-			Detail:      fmt.Sprintf("Image %q uses :latest or has no tag — non-deterministic deploys.", c.Image),
+			Detail:      fmt.Sprintf("Image %q uses :latest or has no tag, so deploys are not deterministic.", c.Image),
 			Remediation: "Pin images to a specific digest or version tag (e.g. image:1.2.3).",
 		})
 	}

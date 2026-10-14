@@ -36,7 +36,7 @@ area/shared:
 
 area/ci:
   - changed-files:
-      - any-glob-to-any-file: [".github/**", "CODEOWNERS", ".golangci.yml", ".tool-versions", "cliff.toml", "scripts/**", "homebrew/**"]
+      - any-glob-to-any-file: [".github/**", "CODEOWNERS", ".golangci.yml", ".tool-versions", "cliff.toml"]
 
 area/docs:
   - changed-files:

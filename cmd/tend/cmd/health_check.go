@@ -12,11 +12,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"annave.tech/cli/internal/health/checker"
-	"annave.tech/cli/internal/health/domain"
-	"annave.tech/cli/internal/health/port"
-	"annave.tech/cli/internal/shared/config"
-	"annave.tech/cli/internal/shared/output"
+	"github.com/annavetech/tend/internal/health/checker"
+	"github.com/annavetech/tend/internal/health/domain"
+	"github.com/annavetech/tend/internal/health/port"
+	"github.com/annavetech/tend/internal/shared/config"
+	"github.com/annavetech/tend/internal/shared/output"
 )
 
 var (
@@ -68,7 +68,7 @@ func runHealthCheck(cmd *cobra.Command, args []string) error {
 		targets[i] = checker.ParseTarget(arg, timeout)
 	}
 
-	// Global deadline: per-target timeout × targets for chain mode, otherwise timeout + buffer.
+	// Global deadline: per-target timeout times targets for chain mode, otherwise timeout plus a buffer.
 	var globalTimeout time.Duration
 	if healthCheckChain {
 		globalTimeout = timeout * time.Duration(len(targets)+1)
@@ -131,27 +131,23 @@ func printHealthReport(p *output.Printer, report *domain.HealthReport) {
 }
 
 func printHealthPlain(p *output.Printer, report *domain.HealthReport) {
-	p.Section(fmt.Sprintf("Health check — %s", report.CheckedAt.Format("2006-01-02 15:04:05")))
+	p.Section(fmt.Sprintf("Health check: %s", report.CheckedAt.Format("2006-01-02 15:04:05")))
 	p.KeyVal("summary", fmt.Sprintf("%d total  %d up  %d down", report.Total, report.Up, report.Down))
 	p.Line("")
 
 	for _, r := range report.Results {
-		icon := "✓"
-		if r.Status != domain.StatusUp {
-			icon = "✗"
-		}
 		lat := ""
 		if r.Latency > 0 {
 			lat = fmt.Sprintf("  %s", r.Latency.Round(time.Millisecond))
 		}
-		p.Linef("  %s  %-45s  %-8s  %s%s",
-			icon, r.Target.Name, strings.ToUpper(string(r.Status)), r.Message, lat)
+		p.Linef("  %-45s  %-8s  %s%s",
+			r.Target.Name, strings.ToUpper(string(r.Status)), r.Message, lat)
 	}
 	p.Line("")
 }
 
 func printHealthTable(p *output.Printer, report *domain.HealthReport) {
-	p.Section(fmt.Sprintf("Health check — %s", report.CheckedAt.Format("2006-01-02 15:04:05")))
+	p.Section(fmt.Sprintf("Health check: %s", report.CheckedAt.Format("2006-01-02 15:04:05")))
 	p.KeyVal("summary", fmt.Sprintf("%d total  %d up  %d down", report.Total, report.Up, report.Down))
 	p.Line("")
 

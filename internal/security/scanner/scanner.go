@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"annave.tech/cli/internal/security/domain"
-	"annave.tech/cli/internal/security/port"
+	"github.com/annavetech/tend/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/port"
 )
 
 // SecurityScanner implements port.Auditor with real scanners.

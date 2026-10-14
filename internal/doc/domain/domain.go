@@ -51,5 +51,5 @@ type Posting struct {
 type Index struct {
 	Root  string
 	Files []DocFile
-	Terms map[string][]Posting // lowercase term → postings
+	Terms map[string][]Posting // postings per lowercase term
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"annave.tech/cli/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/domain"
 )
 
 func localFindings(t *testing.T, fixture string) []domain.Finding {

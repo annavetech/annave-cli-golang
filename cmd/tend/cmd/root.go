@@ -16,24 +16,24 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"annave.tech/cli/internal/shared/output"
+	"github.com/annavetech/tend/internal/shared/output"
 )
 
-// Version is the current release tag embedded at build time.
-const Version = "0.1.0"
+// version is the build version that Execute receives from package main.
+var version = "dev"
 
 var rootCmd = &cobra.Command{
-	Use:   "annave",
-	Short: "ANNÁVE developer tools",
-	Long: `ANNÁVE CLI — engineering tools for log analysis, service health checking,
+	Use:   "tend",
+	Short: "tend developer tools",
+	Long: `tend: engineering tools for log analysis, service health checking,
 documentation search, Kubernetes cleanup, and more.
 
-  annave log analyze [file]     — find what's broken in your logs
-  annave health check [targets] — check service uptime and latency
-  annave doc search [query]     — search documentation from the terminal
-  annave cleanup scan           — find unused Kubernetes resources
+  tend log analyze [file]      find what's broken in your logs
+  tend health check [targets]  check service uptime and latency
+  tend doc search [query]      search documentation from the terminal
+  tend cleanup scan            find unused Kubernetes resources
 
-Run annave <command> --help for details on any command.`,
+Run tend <command> --help for details on any command.`,
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }
@@ -42,7 +42,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("annave version %s\n", Version)
+		fmt.Printf("tend version %s\n", version)
 	},
 }
 
@@ -73,8 +73,9 @@ func newUsageError(c *cobra.Command, err error) error {
 	return &usageError{err: err, path: c.CommandPath()}
 }
 
-// Execute runs the root command and returns the process exit code.
-func Execute() int {
+// Execute runs the root command with build version v and returns the process exit code.
+func Execute(v string) int {
+	version = v
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	// After the first signal, restore default handling so a second Ctrl-C kills the process.

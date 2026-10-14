@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""annave CLI needs-ok-to-test label (pull_request_target: opened).
+"""tend needs-ok-to-test label (pull_request_target: opened).
 Adds the label when a PR's author lacks write access; a maintainer's /ok-to-test removes it."""
 
 import json

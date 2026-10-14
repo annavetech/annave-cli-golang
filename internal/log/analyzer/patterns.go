@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"annave.tech/cli/internal/log/domain"
+	"github.com/annavetech/tend/internal/log/domain"
 )
 
 // messageCount accumulates occurrence statistics for a single message template.

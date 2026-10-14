@@ -6,12 +6,12 @@ package analyzer
 import (
 	"context"
 
-	"annave.tech/cli/internal/cost/domain"
-	"annave.tech/cli/internal/cost/port"
-	shared "annave.tech/cli/internal/shared/errors"
+	"github.com/annavetech/tend/internal/cost/domain"
+	"github.com/annavetech/tend/internal/cost/port"
+	shared "github.com/annavetech/tend/internal/shared/errors"
 )
 
-// azureAnalyzer is a stub — Azure Cost Management API integration is planned.
+// azureAnalyzer is a stub until the Azure Cost Management API integration exists.
 type azureAnalyzer struct{}
 
 func newAzure() *azureAnalyzer { return &azureAnalyzer{} }

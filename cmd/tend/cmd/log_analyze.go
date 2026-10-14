@@ -14,10 +14,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"annave.tech/cli/internal/log/analyzer"
-	"annave.tech/cli/internal/log/domain"
-	"annave.tech/cli/internal/log/port"
-	"annave.tech/cli/internal/shared/output"
+	"github.com/annavetech/tend/internal/log/analyzer"
+	"github.com/annavetech/tend/internal/log/domain"
+	"github.com/annavetech/tend/internal/log/port"
+	"github.com/annavetech/tend/internal/shared/output"
 )
 
 var (
@@ -168,14 +168,14 @@ func printReport(p *output.Printer, report *domain.AnalysisReport) {
 }
 
 func printReportPlain(p *output.Printer, report *domain.AnalysisReport) {
-	p.Section(fmt.Sprintf("Log analysis — %s", report.File))
+	p.Section(fmt.Sprintf("Log analysis: %s", report.File))
 	p.KeyVal("format", string(report.Format))
 	p.KeyVal("lines parsed", fmt.Sprintf("%d / %d", report.ParsedLines, report.TotalLines))
 	if report.Truncated > 0 {
 		p.KeyVal("truncated lines", fmt.Sprintf("%d (cut to 1 MiB)", report.Truncated))
 	}
 	if !report.TimeRange.From.IsZero() {
-		p.KeyVal("time range", fmt.Sprintf("%s → %s",
+		p.KeyVal("time range", fmt.Sprintf("%s to %s",
 			report.TimeRange.From.Format("2006-01-02 15:04:05"),
 			report.TimeRange.To.Format("2006-01-02 15:04:05"),
 		))
@@ -199,7 +199,7 @@ func printReportPlain(p *output.Printer, report *domain.AnalysisReport) {
 }
 
 func printReportTable(p *output.Printer, report *domain.AnalysisReport) {
-	p.Section(fmt.Sprintf("Log analysis — %s", report.File))
+	p.Section(fmt.Sprintf("Log analysis: %s", report.File))
 	p.KeyVal("format", string(report.Format))
 	p.KeyVal("lines parsed", fmt.Sprintf("%d / %d", report.ParsedLines, report.TotalLines))
 

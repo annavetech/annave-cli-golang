@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""annave CLI strip-stale-approval (merge-gate.yml, pull_request_target: synchronize only).
+"""tend strip-stale-approval (merge-gate.yml, pull_request_target: synchronize only).
 Removes the lgtm/approved labels from a PR with a new commit, and posts the corrected status."""
 
 import json

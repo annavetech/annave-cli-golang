@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""annave CLI label sync (push to main on .github/labels.json, or workflow_dispatch).
+"""tend label sync (push to main on .github/labels.json, or workflow_dispatch).
 Makes the repo's real label set match .github/labels.json exactly: creates, updates, and deletes."""
 
 import json

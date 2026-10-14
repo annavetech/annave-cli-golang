@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"annave.tech/cli/internal/cleanup/domain"
+	"github.com/annavetech/tend/internal/cleanup/domain"
 )
 
 // ScanOptions parameterises the cleanup scan.

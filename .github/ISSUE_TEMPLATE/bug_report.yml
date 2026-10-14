@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in the annave CLI is broken or behaves differently than documented.
+description: Something in tend is broken or behaves differently than documented.
 title: "[bug]: "
 labels: ["kind/bug"]
 body:
@@ -27,13 +27,13 @@ body:
     attributes:
       label: Area
       options:
-        - "log (annave log analyze)"
-        - "health (annave health check)"
-        - "doc (annave doc search)"
-        - "cleanup (annave cleanup scan)"
-        - "security (annave security audit)"
-        - "infra (annave infra validate)"
-        - "cost (annave cost scan)"
+        - "log (tend log analyze)"
+        - "health (tend health check)"
+        - "doc (tend doc search)"
+        - "cleanup (tend cleanup scan)"
+        - "security (tend security audit)"
+        - "infra (tend infra validate)"
+        - "cost (tend cost scan)"
         - "cli (flags, output formats, error messages)"
         - "docs"
         - "other"
@@ -43,7 +43,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, Go version, and CLI version (see `annave version`).
+      description: OS, Go version, and CLI version (see `tend version`).
     validations:
       required: false
   - type: textarea

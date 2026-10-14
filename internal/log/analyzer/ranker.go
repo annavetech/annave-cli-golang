@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"annave.tech/cli/internal/log/domain"
+	"github.com/annavetech/tend/internal/log/domain"
 )
 
 // mergeAndSort merges all anomaly lists with spikes first, then by count descending.
@@ -81,9 +81,9 @@ func summaryFor(a domain.Anomaly) string {
 	case domain.AnomalySpike:
 		return msg
 	case domain.AnomalyPattern:
-		return fmt.Sprintf("repeated %d×: %s", a.Count, msg)
+		return fmt.Sprintf("repeated %d times: %s", a.Count, msg)
 	case domain.AnomalyCluster:
-		return fmt.Sprintf("cluster %d×: %s", a.Count, msg)
+		return fmt.Sprintf("cluster of %d: %s", a.Count, msg)
 	}
 	return msg
 }
@@ -95,7 +95,7 @@ func detailFor(a domain.Anomaly) string {
 		if a.FirstLine == a.LastLine {
 			fmt.Fprintf(&sb, "line %d", a.FirstLine)
 		} else {
-			fmt.Fprintf(&sb, "lines %d–%d", a.FirstLine, a.LastLine)
+			fmt.Fprintf(&sb, "lines %d to %d", a.FirstLine, a.LastLine)
 		}
 	}
 	if len(a.SampleLines) > 0 {

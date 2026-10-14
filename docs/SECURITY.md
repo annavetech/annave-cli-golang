@@ -1,9 +1,7 @@
 <!--
-title:       ANNÁVE CLI — Security Notes
+title:       tend: Security Notes
 description: What the security audit checks, known limitations and false positives,
              how authentication works for live checks, and responsible disclosure.
-author:      Anna Veretennykova
-website:     www.annave.tech
 version:     0.1.0
 created:     2026-05-16
 updated:     2026-05-16
@@ -13,7 +11,7 @@ updated:     2026-05-16
 
 ---
 
-## What `annave security audit` checks
+## What `tend security audit` checks
 
 The audit command has four scan types. Each targets a different attack surface.
 
@@ -31,15 +29,15 @@ Walks the file tree and matches 12 regex patterns against every non-binary file.
 - Binary files (detected by null bytes in the first 512 bytes of the file)
 - Generated directories: `node_modules`, `vendor`, `dist`, `.git`, `.angular`
 
-**Critical design choice — `.gitignore` is ignored.** The scanner does not read or respect `.gitignore`. The reason: `.env` files are in `.gitignore` precisely because they contain secrets. A secret scanner that skips `.gitignore` entries would miss the most common source of leaked credentials. If you want to scan only committed files, run `git diff HEAD -- . | annave log analyze --stdin` or use a git-aware tool like `truffleHog` in addition to this scanner.
+**Critical design choice: `.gitignore` is ignored.** The scanner does not read or respect `.gitignore`. The reason: `.env` files are in `.gitignore` precisely because they contain secrets. A secret scanner that skips `.gitignore` entries would miss the most common source of leaked credentials. If you want to scan only committed files, run `git diff HEAD -- . | tend log analyze --stdin` or use a git-aware tool like `truffleHog` in addition to this scanner.
 
 **Secret values in output are redacted.** The first 12 characters of a matched secret are shown; the remainder is replaced with asterisks. This is enough to identify which credential was found without logging the full value.
 
 ### SAST (`--type sast`)
 
-Line-by-line regex pattern matching for security-relevant code patterns. Not an AST-based analysis — this is a practical trade-off for a developer CLI.
+Line-by-line regex pattern matching for security-relevant code patterns. It is not an AST-based analysis. This is a practical trade-off for a developer CLI.
 
-**Known limitation: false positives on rule definitions.** If you run `annave security audit --type sast .` against this repository, the SAST scanner will flag its own rule definition strings (the regex patterns contain the strings they match). This is expected and harmless. Run SAST against your project's source, not against this tool.
+**Known limitation: false positives on rule definitions.** If you run `tend security audit --type sast .` against this repository, the SAST scanner will flag its own rule definition strings (the regex patterns contain the strings they match). This is expected and harmless. Run SAST against your project's source, not against this tool.
 
 **Go rules (10):** Command injection (`exec.Command` + string concat), SQL injection (`db.Query`/`db.Exec` + string concat), path traversal (`os.Open` without `filepath.Clean`), SSRF (`http.Get`/`http.Post` with variable URL), weak random (`math/rand`), weak crypto (`crypto/md5`, `crypto/sha1`), plaintext HTTP server (`http.ListenAndServe` without TLS), unbounded read (`io.ReadAll` without `io.LimitReader`), unsafe memory (`import "unsafe"`), hardcoded credential (assignment to `password`, `secret`, or `token` variable with a string literal).
 
@@ -63,7 +61,7 @@ Same rules as `k8s-live` plus K8S008: image tag is `:latest` or missing (non-det
 
 ## Authentication for live checks
 
-### `annave security audit --type k8s-live`
+### `tend security audit --type k8s-live`
 
 Uses the standard kubeconfig resolution:
 
@@ -83,12 +81,12 @@ rules:
   verbs: ["list", "get"]
 ```
 
-### `annave cost scan`
+### `tend cost scan`
 
 Uses the AWS SDK v2 default credential chain:
 
 1. `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` environment variables
-2. `AWS_PROFILE` → named profile in `~/.aws/credentials`
+2. `AWS_PROFILE`, which names a profile in `~/.aws/credentials`
 3. Default profile in `~/.aws/credentials`
 4. IAM instance role (EC2, ECS task role, Lambda execution role)
 
@@ -109,7 +107,7 @@ Required IAM permissions:
 }
 ```
 
-Cost Explorer is a global service — region configuration does not affect it.
+Cost Explorer is a global service, so region configuration does not affect it.
 
 ---
 
@@ -117,21 +115,21 @@ Cost Explorer is a global service — region configuration does not affect it.
 
 - **No outbound network calls from the analysis modules.** Log analysis, doc search, SAST, secret scanning, and infra validation make no network requests. They work entirely on local files.
 - **No telemetry.** The CLI collects nothing. No usage data, no error reporting to an external service.
-- **No modification of resources.** All commands are read-only. `annave cleanup scan` is dry-run by default and does not delete resources even with `--dry-run=false` — it only reports what it finds.
-- **No shell injection.** `annave infra validate` shells out to `terraform` and `helm` with fixed argument lists constructed from validated flag values. User-supplied paths are passed as arguments, not interpolated into shell strings.
+- **No modification of resources.** All commands are read-only. `tend cleanup scan` is dry-run by default and does not delete resources even with `--dry-run=false`. It only reports what it finds.
+- **No shell injection.** `tend infra validate` shells out to `terraform` and `helm` with fixed argument lists constructed from validated flag values. User-supplied paths are passed as arguments, not interpolated into shell strings.
 
 ---
 
 ## Responsible disclosure
 
-If you find a security vulnerability in ANNÁVE CLI, please report it privately before opening a public issue.
+If you find a security vulnerability in tend, please report it privately before opening a public issue.
 
-**Contact:** contact@annave.tech
+**Contact:** [GitHub security advisories](https://github.com/annavetech/tend/security/advisories/new)
 
 Include:
 - A description of the vulnerability
 - Steps to reproduce
-- The version of `annave` affected (`annave version`)
+- The version of `tend` affected (`tend version`)
 - Your assessment of the impact
 
 We will respond within 72 hours and aim to release a fix within 14 days of confirmation.

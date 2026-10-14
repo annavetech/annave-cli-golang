@@ -26,7 +26,7 @@
     {"name": "size/XL", "color": "2e7d32", "description": "500-999 lines changed."},
     {"name": "size/XXL", "color": "1b5e20", "description": "1000 or more lines changed."},
 
-    {"name": "area/cli", "color": "bfd4f2", "description": "cmd/annave/ - the annave command and its subcommands"},
+    {"name": "area/cli", "color": "bfd4f2", "description": "cmd/tend/ - the tend command and its subcommands"},
     {"name": "area/log", "color": "bfd4f2", "description": "internal/log/ - log analyze"},
     {"name": "area/health", "color": "bfd4f2", "description": "internal/health/ - health check (http, tcp, dns)"},
     {"name": "area/doc", "color": "bfd4f2", "description": "internal/doc/ - doc search"},
@@ -35,7 +35,7 @@
     {"name": "area/infra", "color": "bfd4f2", "description": "internal/infra/ - infra validate (Terraform, Helm, Kubernetes YAML)"},
     {"name": "area/cost", "color": "bfd4f2", "description": "internal/cost/ - cost scan (AWS, GCP, Azure)"},
     {"name": "area/shared", "color": "bfd4f2", "description": "internal/shared/ - errors, output, and embedded config"},
-    {"name": "area/ci", "color": "bfd4f2", "description": ".github/, CODEOWNERS, .golangci.yml, .tool-versions, cliff.toml, scripts/, homebrew/"},
+    {"name": "area/ci", "color": "bfd4f2", "description": ".github/, CODEOWNERS, .golangci.yml, .tool-versions, cliff.toml"},
     {"name": "area/docs", "color": "bfd4f2", "description": "docs/, root *.md, LICENSE, NOTICE"},
 
     {"name": "do-not-merge/hold", "color": "b60205", "description": "Blocks merge until removed. Set by /hold, cleared by /unhold."},

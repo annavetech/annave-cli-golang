@@ -1,11 +1,11 @@
-# ANNÁVE CLI — User-Facing Error Messages
+# tend: User-Facing Error Messages
 #
 # All user-facing error messages are defined here, keyed by error code.
 # Error codes follow the pattern ERR_SLUG.
 #   ERR  = it is an error
 #   SLUG = what went wrong, self-documenting, no sequence number needed
 #
-# The code values (ERR_*) are referenced in Go source — do not rename them.
+# The code values (ERR_*) are referenced in Go source. Do not rename them.
 # Only the message strings are safe to edit.
 #
 # In plain output, messages appear as:

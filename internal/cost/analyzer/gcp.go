@@ -6,12 +6,12 @@ package analyzer
 import (
 	"context"
 
-	"annave.tech/cli/internal/cost/domain"
-	"annave.tech/cli/internal/cost/port"
-	shared "annave.tech/cli/internal/shared/errors"
+	"github.com/annavetech/tend/internal/cost/domain"
+	"github.com/annavetech/tend/internal/cost/port"
+	shared "github.com/annavetech/tend/internal/shared/errors"
 )
 
-// gcpAnalyzer is a stub — GCP billing API integration is planned.
+// gcpAnalyzer is a stub until the GCP billing API integration exists.
 type gcpAnalyzer struct{}
 
 func newGCP() *gcpAnalyzer { return &gcpAnalyzer{} }

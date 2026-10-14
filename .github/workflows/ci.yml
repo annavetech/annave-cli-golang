@@ -34,6 +34,9 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go build ./...
+      - run: go build -o tend ./cmd/tend
+      - run: ./tend version
+      - run: test -z "$(git check-ignore -v cmd/tend/main.go)"
 
   test:
     runs-on: ubuntu-latest

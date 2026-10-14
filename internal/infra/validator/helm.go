@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"annave.tech/cli/internal/infra/domain"
+	"github.com/annavetech/tend/internal/infra/domain"
 )
 
 // helmRelease mirrors the JSON output of `helm list -o json`.
@@ -27,7 +27,7 @@ type helmRelease struct {
 
 // unhealthyStatuses are helm release statuses that indicate a problem.
 var unhealthyStatuses = map[string]string{
-	"failed":           "release failed — last deployment did not complete successfully",
+	"failed":           "release failed: the last deployment did not complete successfully",
 	"pending-install":  "release stuck in pending-install",
 	"pending-upgrade":  "release stuck in pending-upgrade",
 	"pending-rollback": "release stuck in pending-rollback",
@@ -39,7 +39,7 @@ var unhealthyStatuses = map[string]string{
 func validateHelm(ctx context.Context, run commandRunner, target string) (*domain.ValidationResult, error) {
 	helmBin, err := run.LookPath("helm")
 	if err != nil {
-		return nil, fmt.Errorf("helm binary not found in PATH — install helm to use infra validate with Helm")
+		return nil, fmt.Errorf("helm binary not found in PATH: install helm to use infra validate with Helm")
 	}
 
 	result := &domain.ValidationResult{
@@ -48,14 +48,14 @@ func validateHelm(ctx context.Context, run commandRunner, target string) (*domai
 	}
 
 	if target == "" || target == "." {
-		// No target → inspect deployed releases in the cluster.
+		// No target: inspect deployed releases in the cluster.
 		issues, err := listReleases(ctx, run, helmBin)
 		if err != nil {
 			return nil, err
 		}
 		result.Issues = issues
 	} else {
-		// Target is a chart directory → lint it.
+		// The target is a chart directory, so lint it.
 		abs, err := filepath.Abs(target)
 		if err != nil {
 			return nil, err
@@ -102,7 +102,7 @@ func listReleases(ctx context.Context, run commandRunner, helmBin string) ([]dom
 			issues = append(issues, domain.ValidationIssue{
 				Severity: domain.SeverityLow,
 				Rule:     "HELM002",
-				Message:  fmt.Sprintf("Release %s is superseded — consider pruning old revisions", ref),
+				Message:  fmt.Sprintf("Release %s is superseded. Consider pruning old revisions", ref),
 				Resource: ref,
 			})
 		}

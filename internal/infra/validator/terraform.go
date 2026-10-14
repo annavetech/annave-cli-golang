@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"annave.tech/cli/internal/infra/domain"
+	"github.com/annavetech/tend/internal/infra/domain"
 )
 
 // tfPlan is the minimal structure of `terraform show -json` output.
@@ -34,13 +34,13 @@ type tfChange struct {
 
 // destructiveDataRisk maps resource types whose deletion destroys irreplaceable data.
 var destructiveDataRisk = map[string]string{
-	"aws_db_instance":              "RDS database — deletion destroys all data permanently",
-	"aws_rds_cluster":              "RDS Aurora cluster — deletion destroys all data permanently",
-	"aws_dynamodb_table":           "DynamoDB table — deletion destroys all items permanently",
-	"aws_s3_bucket":                "S3 bucket — may contain critical data",
+	"aws_db_instance":              "RDS database: deletion destroys all data permanently",
+	"aws_rds_cluster":              "RDS Aurora cluster: deletion destroys all data permanently",
+	"aws_dynamodb_table":           "DynamoDB table: deletion destroys all items permanently",
+	"aws_s3_bucket":                "S3 bucket: may contain critical data",
 	"aws_elasticsearch_domain":     "Elasticsearch domain and all indices",
 	"aws_opensearch_domain":        "OpenSearch domain and all indices",
-	"google_sql_database_instance": "Cloud SQL instance — deletion destroys all data",
+	"google_sql_database_instance": "Cloud SQL instance: deletion destroys all data",
 	"google_bigtable_instance":     "Bigtable instance and all tables",
 	"azurerm_sql_server":           "Azure SQL Server and all databases",
 	"azurerm_cosmosdb_account":     "CosmosDB account and all data",
@@ -99,7 +99,7 @@ func validateTerraform(ctx context.Context, run commandRunner, target string) (*
 func loadTerraformJSON(ctx context.Context, run commandRunner, target string) ([]byte, error) {
 	ext := strings.ToLower(filepath.Ext(target))
 
-	// Already a JSON file — parse directly.
+	// Already a JSON file, so parse it directly.
 	if ext == ".json" {
 		data, err := readFile(target)
 		if err != nil {
@@ -108,10 +108,10 @@ func loadTerraformJSON(ctx context.Context, run commandRunner, target string) ([
 		return data, nil
 	}
 
-	// Binary .tfplan — shell out to terraform show -json.
+	// Binary .tfplan: shell out to terraform show -json.
 	tfBin, err := run.LookPath("terraform")
 	if err != nil {
-		return nil, fmt.Errorf("terraform binary not found in PATH — run `terraform show -json plan.tfplan > plan.json` and pass the JSON file instead")
+		return nil, fmt.Errorf("terraform binary not found in PATH: run `terraform show -json plan.tfplan > plan.json` and pass the JSON file instead")
 	}
 
 	abs, err := filepath.Abs(target)
@@ -144,14 +144,14 @@ func classifyChange(rc tfResourceChange) []domain.ValidationIssue {
 			issues = append(issues, domain.ValidationIssue{
 				Severity: domain.SeverityCritical,
 				Rule:     "TF001",
-				Message:  fmt.Sprintf("Destructive delete: %s — %s", rc.Address, desc),
+				Message:  fmt.Sprintf("Destructive delete: %s (%s)", rc.Address, desc),
 				Resource: rc.Address,
 			})
 		} else if isReplace {
 			issues = append(issues, domain.ValidationIssue{
 				Severity: domain.SeverityCritical,
 				Rule:     "TF002",
-				Message:  fmt.Sprintf("Destructive replace: %s — %s (will be destroyed and recreated)", rc.Address, desc),
+				Message:  fmt.Sprintf("Destructive replace: %s (%s). It will be destroyed and recreated", rc.Address, desc),
 				Resource: rc.Address,
 			})
 		}

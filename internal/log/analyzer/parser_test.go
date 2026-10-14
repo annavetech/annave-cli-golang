@@ -11,7 +11,7 @@ import (
 	"testing"
 	"testing/iotest"
 
-	"annave.tech/cli/internal/log/port"
+	"github.com/annavetech/tend/internal/log/port"
 )
 
 func TestParseLinesContinuesAfterOverlongLine(t *testing.T) {

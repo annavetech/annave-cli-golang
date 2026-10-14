@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"annave.tech/cli/internal/cost/analyzer"
-	"annave.tech/cli/internal/cost/domain"
-	"annave.tech/cli/internal/cost/port"
-	"annave.tech/cli/internal/shared/output"
+	"github.com/annavetech/tend/internal/cost/analyzer"
+	"github.com/annavetech/tend/internal/cost/domain"
+	"github.com/annavetech/tend/internal/cost/port"
+	"github.com/annavetech/tend/internal/shared/output"
 )
 
 var (
@@ -35,9 +35,9 @@ AWS auth uses the standard credential chain:
 Note: AWS Cost Explorer API charges $0.01 per API request.
 
 Examples:
-  annave cost scan
-  annave cost scan --since 2026-04-01
-  annave cost scan --provider aws --format table`,
+  tend cost scan
+  tend cost scan --since 2026-04-01
+  tend cost scan --provider aws --format table`,
 	RunE: runCostScan,
 }
 
@@ -59,7 +59,7 @@ func runCostScan(cmd *cobra.Command, args []string) error {
 	if costScanSince != "" {
 		since, err = time.Parse("2006-01-02", costScanSince)
 		if err != nil {
-			return fmt.Errorf("invalid --since value %q — use YYYY-MM-DD format", costScanSince)
+			return fmt.Errorf("invalid --since value %q: use YYYY-MM-DD format", costScanSince)
 		}
 	}
 
@@ -96,7 +96,7 @@ func printCostReport(p *output.Printer, report *domain.CostReport) {
 }
 
 func printCostPlain(p *output.Printer, report *domain.CostReport) {
-	p.Section(fmt.Sprintf("Cost analysis — %s", strings.ToUpper(report.Provider)))
+	p.Section(fmt.Sprintf("Cost analysis: %s", strings.ToUpper(report.Provider)))
 	p.KeyVal("period", report.Period)
 	p.KeyVal("total cost", fmt.Sprintf("$%.2f %s", report.TotalCost, report.Currency))
 	p.KeyVal("scanned at", report.ScannedAt.Format("2006-01-02 15:04:05"))
@@ -133,7 +133,7 @@ func printCostPlain(p *output.Printer, report *domain.CostReport) {
 	if len(report.Anomalies) > 0 {
 		p.Linef("  ANOMALIES (%d):\n", len(report.Anomalies))
 		for i, a := range report.Anomalies {
-			p.Linef("  [%d] %s — %s", i+1, a.Service, a.Message)
+			p.Linef("  [%d] %s: %s", i+1, a.Service, a.Message)
 		}
 		p.Line("")
 	} else {
@@ -142,7 +142,7 @@ func printCostPlain(p *output.Printer, report *domain.CostReport) {
 }
 
 func printCostTable(p *output.Printer, report *domain.CostReport) {
-	p.Section(fmt.Sprintf("Cost analysis — %s", strings.ToUpper(report.Provider)))
+	p.Section(fmt.Sprintf("Cost analysis: %s", strings.ToUpper(report.Provider)))
 	p.KeyVal("period", report.Period)
 	p.KeyVal("total cost", fmt.Sprintf("$%.2f %s", report.TotalCost, report.Currency))
 	p.Line("")
@@ -157,7 +157,7 @@ func printCostTable(p *output.Printer, report *domain.CostReport) {
 
 	anomalySet := make(map[string]string)
 	for _, a := range report.Anomalies {
-		anomalySet[a.Service] = fmt.Sprintf("▲%.0f%%", a.DeltaPct)
+		anomalySet[a.Service] = fmt.Sprintf("+%.0f%%", a.DeltaPct)
 	}
 
 	for i, rec := range report.Records {

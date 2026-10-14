@@ -10,11 +10,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"annave.tech/cli/internal/cleanup/domain"
-	"annave.tech/cli/internal/cleanup/port"
-	"annave.tech/cli/internal/cleanup/scanner"
-	"annave.tech/cli/internal/shared/config"
-	"annave.tech/cli/internal/shared/output"
+	"github.com/annavetech/tend/internal/cleanup/domain"
+	"github.com/annavetech/tend/internal/cleanup/port"
+	"github.com/annavetech/tend/internal/cleanup/scanner"
+	"github.com/annavetech/tend/internal/shared/config"
+	"github.com/annavetech/tend/internal/shared/output"
 )
 
 var (
@@ -95,7 +95,7 @@ func printCleanupPlain(p *output.Printer, plan *domain.CleanupPlan) {
 	if plan.DryRun {
 		header += " [DRY RUN]"
 	}
-	p.Section(fmt.Sprintf("%s — %s", header, plan.ScannedAt.Format("2006-01-02 15:04:05")))
+	p.Section(fmt.Sprintf("%s: %s", header, plan.ScannedAt.Format("2006-01-02 15:04:05")))
 	p.KeyVal("context", plan.Context)
 	ns := plan.Namespace
 	if ns == "" {
@@ -131,7 +131,7 @@ func printCleanupTable(p *output.Printer, plan *domain.CleanupPlan) {
 	if plan.DryRun {
 		header += " [DRY RUN]"
 	}
-	p.Section(fmt.Sprintf("%s — %s", header, plan.ScannedAt.Format("2006-01-02 15:04:05")))
+	p.Section(fmt.Sprintf("%s: %s", header, plan.ScannedAt.Format("2006-01-02 15:04:05")))
 	p.KeyVal("context", plan.Context)
 	p.KeyVal("findings", fmt.Sprintf("%d idle resource(s)", len(plan.Resources)))
 	p.Line("")

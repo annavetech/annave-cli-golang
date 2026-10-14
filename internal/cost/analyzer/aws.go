@@ -16,8 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
 	cetypes "github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
 
-	"annave.tech/cli/internal/cost/domain"
-	"annave.tech/cli/internal/cost/port"
+	"github.com/annavetech/tend/internal/cost/domain"
+	"github.com/annavetech/tend/internal/cost/port"
 )
 
 const (
@@ -35,7 +35,7 @@ func newAWS() *AWSAnalyzer { return &AWSAnalyzer{} }
 func (a *AWSAnalyzer) Analyze(ctx context.Context, opts port.AnalyzeOptions) (*domain.CostReport, error) {
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot load AWS credentials: %w — ensure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set, or configure ~/.aws/credentials", err)
+		return nil, fmt.Errorf("cannot load AWS credentials: %w: set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or configure ~/.aws/credentials", err)
 	}
 
 	ce := costexplorer.NewFromConfig(cfg)
@@ -61,11 +61,11 @@ func (a *AWSAnalyzer) Analyze(ctx context.Context, opts port.AnalyzeOptions) (*d
 		return nil, fmt.Errorf("AWS Cost Explorer API error: %w", err)
 	}
 
-	// Build a time-series map: service → []float64 (daily costs, chronological).
+	// Build a time series per service: daily costs in date order.
 	// Preserve insertion order by collecting dates first.
 	var dates []string
 	dateSet := make(map[string]bool)
-	serviceSeries := make(map[string]map[string]float64) // service → date → amount
+	serviceSeries := make(map[string]map[string]float64) // amount per date per service
 
 	for _, result := range usage.ResultsByTime {
 		date := aws.ToString(result.TimePeriod.Start)
@@ -109,7 +109,7 @@ func (a *AWSAnalyzer) Analyze(ctx context.Context, opts port.AnalyzeOptions) (*d
 			Service:  svc,
 			Amount:   roundCents(svcTotal),
 			Currency: domain.CurrencyUSD,
-			Period:   since + " → " + lastDay(until),
+			Period:   since + " to " + lastDay(until),
 		})
 
 		// Anomaly detection: compare last day to rolling average of previous window.
@@ -146,7 +146,7 @@ func (a *AWSAnalyzer) Analyze(ctx context.Context, opts port.AnalyzeOptions) (*d
 
 	report := &domain.CostReport{
 		Provider:  "aws",
-		Period:    since + " → " + lastDay(until),
+		Period:    since + " to " + lastDay(until),
 		TotalCost: roundCents(totalCost),
 		Currency:  domain.CurrencyUSD,
 		Records:   records,

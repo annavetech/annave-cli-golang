@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+	"unicode/utf8"
 )
 
 // Format defines the output format for a command.
@@ -31,7 +32,7 @@ func ParseFormat(s string) (Format, error) {
 	case "table":
 		return FormatTable, nil
 	default:
-		return "", fmt.Errorf("unknown format %q — use plain, json, or table", s)
+		return "", fmt.Errorf("unknown format %q: use plain, json, or table", s)
 	}
 }
 
@@ -117,14 +118,14 @@ func (p *Printer) Error(err error) {
 
 // InDevelopment prints a consistent "in development" notice.
 func (p *Printer) InDevelopment(module string) {
-	p.write(p.out, fmt.Sprintf("\n  annave %s is in development.\n\n", module))
+	p.write(p.out, fmt.Sprintf("\n  tend %s is in development.\n\n", module))
 	p.write(p.out, "  This module has been architected and will ship in a future release.\n")
-	p.write(p.out, "  Follow updates at https://www.annave.tech\n\n")
+	p.write(p.out, "  Follow updates at https://github.com/annavetech/tend\n\n")
 }
 
 // Section prints a labelled section header.
 func (p *Printer) Section(label string) {
-	p.write(p.out, fmt.Sprintf("\n%s\n%s\n", label, strings.Repeat("─", len(label))))
+	p.write(p.out, fmt.Sprintf("\n%s\n%s\n", label, strings.Repeat("-", utf8.RuneCountInString(label))))
 }
 
 // KeyVal prints a key: value pair.

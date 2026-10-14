@@ -1,0 +1,65 @@
+# Release pipeline for tend.
+#
+# Builds tend for darwin and linux on amd64 and arm64, publishes a GitHub
+# release with tar.gz archives and checksums.txt, and pushes a Homebrew cask
+# to annavetech/homebrew-tap. release.yml runs it on v* tags and pins the
+# GoReleaser version.
+#
+# The binaries are not signed or notarized, so macOS quarantines them; the
+# cask post-install hook removes that attribute.
+
+version: 2
+
+project_name: tend
+
+builds:
+  - id: tend
+    main: ./cmd/tend
+    binary: tend
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: tend
+    ids:
+      - tend
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: "checksums.txt"
+
+homebrew_casks:
+  - name: tend
+    ids:
+      - tend
+    binaries:
+      - tend
+    repository:
+      owner: annavetech
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Casks
+    homepage: "https://github.com/annavetech/tend"
+    description: "Developer tools for log analysis, health checks, docs search, and cleanup"
+    license: "MIT"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/tend"]
+          end
+
+release:
+  github:
+    owner: annavetech
+    name: tend

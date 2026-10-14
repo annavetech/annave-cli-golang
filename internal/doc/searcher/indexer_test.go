@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"annave.tech/cli/internal/doc/port"
+	"github.com/annavetech/tend/internal/doc/port"
 )
 
 func indexHas(t *testing.T, root, term string) bool {

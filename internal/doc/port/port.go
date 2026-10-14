@@ -6,7 +6,7 @@ package port
 import (
 	"context"
 
-	"annave.tech/cli/internal/doc/domain"
+	"github.com/annavetech/tend/internal/doc/domain"
 )
 
 // SearchOptions configures a doc search run.

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"annave.tech/cli/internal/log/domain"
+	"github.com/annavetech/tend/internal/log/domain"
 )
 
 var (

@@ -6,7 +6,7 @@ package rules
 import (
 	"regexp"
 
-	"annave.tech/cli/internal/security/domain"
+	"github.com/annavetech/tend/internal/security/domain"
 )
 
 // Rule defines a single detection pattern for secrets or SAST scanning.

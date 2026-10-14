@@ -13,9 +13,9 @@ import (
 	"sort"
 	"strings"
 
-	"annave.tech/cli/internal/doc/domain"
-	"annave.tech/cli/internal/doc/port"
-	"annave.tech/cli/internal/shared/config"
+	"github.com/annavetech/tend/internal/doc/domain"
+	"github.com/annavetech/tend/internal/doc/port"
+	"github.com/annavetech/tend/internal/shared/config"
 )
 
 func search(ctx context.Context, idx *domain.Index, query domain.SearchQuery, opts port.SearchOptions) ([]domain.SearchResult, error) {
@@ -28,8 +28,8 @@ func search(ctx context.Context, idx *domain.Index, query domain.SearchQuery, op
 		maxResults = config.App.Limits.Doc.MaxResults
 	}
 
-	scores := make(map[int]float64) // fileIndex → cumulative score
-	bestLine := make(map[int]int)   // fileIndex → line of first match
+	scores := make(map[int]float64) // cumulative score per file index
+	bestLine := make(map[int]int)   // first matching line per file index
 
 	for _, term := range query.Terms {
 		lower := strings.ToLower(term)
