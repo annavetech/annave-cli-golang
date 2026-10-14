@@ -1,0 +1,50 @@
+name: merge-gate-status
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+# Same group as chat-ops.yml so a push and a chat command on one PR never race.
+concurrency:
+  group: merge-gate-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  # Posts the merge-gate status from the PR labels on every trigger except synchronize.
+  merge-gate-status:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'synchronize'
+    steps:
+      # pull_request_target: checks out the base branch only, never the PR's code.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python3 .github/scripts/merge_gate.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # A new commit drops lgtm and approved (holds stay) and posts the corrected status.
+  strip-stale-approval:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'synchronize'
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python3 .github/scripts/strip_stale_approval.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

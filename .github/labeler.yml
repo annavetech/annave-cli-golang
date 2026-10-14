@@ -1,0 +1,43 @@
+area/cli:
+  - changed-files:
+      - any-glob-to-any-file: ["cmd/**"]
+
+area/log:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/log/**"]
+
+area/health:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/health/**"]
+
+area/doc:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/doc/**"]
+
+area/cleanup:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/cleanup/**"]
+
+area/security:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/security/**"]
+
+area/infra:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/infra/**"]
+
+area/cost:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/cost/**"]
+
+area/shared:
+  - changed-files:
+      - any-glob-to-any-file: ["internal/shared/**"]
+
+area/ci:
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", "CODEOWNERS", ".golangci.yml", ".tool-versions", "cliff.toml", "scripts/**", "homebrew/**"]
+
+area/docs:
+  - changed-files:
+      - any-glob-to-any-file: ["docs/**", "*.md", "LICENSE", "NOTICE"]
