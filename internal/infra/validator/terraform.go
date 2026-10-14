@@ -1,9 +1,10 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package validator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -67,13 +68,13 @@ var networkRisk = map[string]string{
 	"azurerm_network_security_rule":  "Azure NSG rule",
 }
 
-func validateTerraform(run commandRunner, target string) (*domain.ValidationResult, error) {
+func validateTerraform(ctx context.Context, run commandRunner, target string) (*domain.ValidationResult, error) {
 	result := &domain.ValidationResult{
 		Target:      target,
 		ValidatedAt: time.Now(),
 	}
 
-	data, err := loadTerraformJSON(run, target)
+	data, err := loadTerraformJSON(ctx, run, target)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +96,7 @@ func validateTerraform(run commandRunner, target string) (*domain.ValidationResu
 	return result, nil
 }
 
-func loadTerraformJSON(run commandRunner, target string) ([]byte, error) {
+func loadTerraformJSON(ctx context.Context, run commandRunner, target string) ([]byte, error) {
 	ext := strings.ToLower(filepath.Ext(target))
 
 	// Already a JSON file — parse directly.
@@ -117,7 +118,7 @@ func loadTerraformJSON(run commandRunner, target string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := run.Output(filepath.Dir(abs), tfBin, "show", "-json", abs)
+	out, err := run.Output(ctx, filepath.Dir(abs), tfBin, "show", "-json", abs)
 	if err != nil {
 		return nil, fmt.Errorf("terraform show -json failed: %w", err)
 	}

@@ -15,19 +15,15 @@ All errors from ANNÁVE CLI use the same structured format:
 
 **Plain mode (stderr):**
 ```
-[runtime/ERR_NOT_IMPLEMENTED] GCP cost analysis is not yet implemented — use --provider aws
+[runtime/ERR_NOT_IMPLEMENTED] GCP cost analysis is not implemented yet. Use --provider aws.
 ```
 
-**JSON mode (when `--format json` is set and an error occurs):**
+**JSON mode (stdout, when `--format json` is set and an error occurs):**
 ```json
-{
-  "code": "ERR_NOT_IMPLEMENTED",
-  "stage": "runtime",
-  "message": "GCP cost analysis is not yet implemented — use --provider aws"
-}
+{"error":"[runtime/ERR_NOT_IMPLEMENTED] GCP cost analysis is not implemented yet. Use --provider aws."}
 ```
 
-The `code` field is the machine-readable identifier. The `message` field is human-readable and may change between versions. Parse `code`, not `message`.
+The `ERR_<SLUG>` code inside the brackets is the machine-readable identifier. The rest of the message is human-readable and may change between versions. Match the code, not the text.
 
 ---
 
@@ -51,7 +47,7 @@ There are no sequence numbers. The slug is the unique identifier across all modu
 
 **When triggered:** A feature that exists in the CLI but has no working adapter yet. Currently: `annave cost scan --provider gcp` and `--provider azure`.
 
-**Script handling:** The exit code is `0` for not-implemented providers — they print a friendly notice, not an error. You only see this code in JSON output or when checking the error type programmatically.
+**Script handling:** The command exits `1`. Use `--provider aws` instead.
 
 ---
 
@@ -85,7 +81,7 @@ There are no sequence numbers. The slug is the unique identifier across all modu
 |---|---|
 | Stage | `network` |
 
-**When triggered:** A network operation exceeded its deadline. In health checks, each target has its own timeout and a timeout result does not cause a non-zero exit code — it is reported as status `timeout` in the output. This code is used for module-level timeouts (e.g., the entire cleanup scan exceeds `cleanup.timeout_seconds`).
+**When triggered:** A network operation exceeded its deadline. In health checks, each target has its own timeout and a timed out target is reported as status `timeout` in the output; the command then exits `2`, like any down target. This code is used for module-level timeouts (e.g., the entire cleanup scan exceeds `cleanup.timeout_seconds`).
 
 **Script handling:** Increase the timeout in `limits.yaml` or the `--timeout` flag. For cleanup scans on large clusters, increase `cleanup.timeout_seconds`.
 
@@ -144,7 +140,7 @@ There are no sequence numbers. The slug is the unique identifier across all modu
 
 | Code | Stage | Exit code |
 |---|---|---|
-| `ERR_NOT_IMPLEMENTED` | runtime | 0 (printed as notice) |
+| `ERR_NOT_IMPLEMENTED` | runtime | 1 |
 | `ERR_INVALID_INPUT` | input | 1 |
 | `ERR_IO_FAILURE` | input | 1 |
 | `ERR_TIMEOUT` | network | 1 |
@@ -152,4 +148,4 @@ There are no sequence numbers. The slug is the unique identifier across all modu
 | `ERR_NOT_FOUND` | input | 1 |
 | `ERR_PARSE_FAILED` | analysis | 1 |
 
-Note: a command that runs successfully but finds anomalies, issues, or idle resources exits with code `0`. Only execution errors exit with code `1`. This means `annave security audit .` returning 10 findings still exits `0` — treat the findings as data, not as failure.
+Note: a command that runs successfully but reports findings, down targets, anomalies, idle resources, or a failed validation exits with code `2`. Execution errors exit with code `1`. A clean run exits `0`. This means `annave security audit .` returning 10 findings exits `2`, so a CI step fails without parsing the output.

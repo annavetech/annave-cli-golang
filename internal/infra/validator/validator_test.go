@@ -1,15 +1,17 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package validator
 
 import (
+	"context"
 	"embed"
 	"errors"
 	"strings"
 	"testing"
 
 	"annave.tech/cli/internal/infra/domain"
+	"annave.tech/cli/internal/infra/port"
 )
 
 //go:embed testdata
@@ -24,11 +26,11 @@ type fakeRunner struct {
 
 func (f fakeRunner) LookPath(file string) (string, error) { return file, nil }
 
-func (f fakeRunner) Output(_, name string, args ...string) ([]byte, error) {
-	return f.CombinedOutput(name, args...)
+func (f fakeRunner) Output(ctx context.Context, _, name string, args ...string) ([]byte, error) {
+	return f.CombinedOutput(ctx, name, args...)
 }
 
-func (f fakeRunner) CombinedOutput(name string, args ...string) ([]byte, error) {
+func (f fakeRunner) CombinedOutput(_ context.Context, name string, args ...string) ([]byte, error) {
 	line := strings.Join(append([]string{name}, args...), " ")
 	file, ok := f.outputs[line]
 	if !ok {
@@ -54,7 +56,7 @@ func TestHelmListIncludesPendingAndSuperseded(t *testing.T) {
 		"helm list -A -o json":       "helm-list-default.json",
 		"helm list -A -o json --all": "helm-list-all.json",
 	}}
-	res, err := validateHelm(run, "")
+	res, err := validateHelm(t.Context(), run, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +72,7 @@ func TestHelmLintFailureWithoutErrorLine(t *testing.T) {
 	run := fakeRunner{t: t, exitErr: errors.New("exit status 1"), outputs: map[string]string{
 		"helm lint /charts/missing": "helm-lint-missing-chart.txt",
 	}}
-	_, err := lintChart(run, "helm", "/charts/missing")
+	_, err := lintChart(t.Context(), run, "helm", "/charts/missing")
 	if err == nil || !strings.Contains(err.Error(), "Chart.yaml") {
 		t.Fatalf("want an error with helm output, got %v", err)
 	}
@@ -80,7 +82,7 @@ func TestHelmLintErrorLinesStillReported(t *testing.T) {
 	run := fakeRunner{t: t, exitErr: errors.New("exit status 1"), outputs: map[string]string{
 		"helm lint /charts/web": "helm-lint-errors.txt",
 	}}
-	issues, err := lintChart(run, "helm", "/charts/web")
+	issues, err := lintChart(t.Context(), run, "helm", "/charts/web")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,5 +98,32 @@ func TestK8sYAMLCronJobContainers(t *testing.T) {
 	}
 	if !strings.Contains(rules(res.Issues), "K8S104") {
 		t.Fatalf("want K8S104 for the CronJob container, got %q", rules(res.Issues))
+	}
+}
+
+// ctxRunner records the context each command runs under.
+type ctxRunner struct {
+	fakeRunner
+	got *context.Context
+}
+
+func (r ctxRunner) Output(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+	*r.got = ctx
+	return r.fakeRunner.Output(ctx, dir, name, args...)
+}
+
+func TestValidatePassesContextToRunner(t *testing.T) {
+	type key struct{}
+	var got context.Context
+	run := ctxRunner{fakeRunner: fakeRunner{t: t, outputs: map[string]string{
+		"helm list -A -o json --all": "helm-list-all.json",
+	}}, got: &got}
+	ctx := context.WithValue(t.Context(), key{}, "caller")
+	v := &InfraValidator{run: run}
+	if _, err := v.Validate(ctx, "", port.ValidateOptions{Type: "helm"}); err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got.Value(key{}) != "caller" {
+		t.Fatal("helm must run under the caller's context")
 	}
 }

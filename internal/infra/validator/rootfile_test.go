@@ -1,6 +1,6 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package validator
 
 import (
@@ -131,7 +131,7 @@ func TestExplicitTerraformPlanSymlinkToOtherDirReads(t *testing.T) {
 	if err := os.Symlink(filepath.Join("..", "real", "plan.json"), link); err != nil {
 		t.Fatal(err)
 	}
-	data, err := loadTerraformJSON(fakeRunner{t: t}, link)
+	data, err := loadTerraformJSON(t.Context(), fakeRunner{t: t}, link)
 	if err != nil || string(data) != `{"resource_changes":[]}` {
 		t.Fatalf("data = %q, err = %v", data, err)
 	}

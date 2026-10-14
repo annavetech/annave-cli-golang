@@ -14,8 +14,8 @@ updated:     2026-05-16
 All commands follow the same conventions:
 
 - `--format plain|json|table` is available on every command. Default is `plain`.
-- Exit code `0` means the command ran successfully. Exit code `1` means an error occurred. A finding or anomaly is not an error — the command still exits `0`.
-- Errors are printed to stderr in plain mode. In JSON mode, errors are printed as `{"code":"...","stage":"...","message":"..."}`.
+- Exit code `0` means the command ran and found nothing to report. Exit code `1` means an error occurred. Exit code `2` means the command ran and found problems: findings, down targets, idle resources, anomalies, or a failed validation. Each command lists its exit codes below.
+- Errors are printed to stderr as one `error:` line. Flag, argument, and unknown command errors add one line that points at `--help`. In JSON mode, errors are printed to stdout as `{"error":"..."}`, and notices go to stderr so stdout stays valid JSON.
 
 ---
 
@@ -43,7 +43,7 @@ annave log analyze [file] [flags]
 Analyze a log file for errors, spikes, and repeated patterns.
 
 **Arguments:**
-- `file` — path to the log file. Omit when using `--stdin`.
+- `file`: path to the log file, or `-` to read from stdin. Required unless `--stdin` is set.
 
 **Flags:**
 
@@ -52,7 +52,7 @@ Analyze a log file for errors, spikes, and repeated patterns.
 | `--stdin` | bool | false | read from stdin instead of a file |
 | `--format` | string | plain | output format: plain, json, table |
 | `--since` | string | — | only include entries after this time |
-| `--level` | string | — | minimum log level: debug, info, warn, error |
+| `--level` | string | none | minimum log level: debug, info, warn, error, critical (`warning` is accepted as warn; any other value is an error) |
 
 `--since` accepts a Go duration (`1h`, `30m`, `2h30m`), an RFC3339 timestamp (`2026-05-16T10:00:00Z`), or a date (`2026-05-16`).
 
@@ -99,6 +99,8 @@ Lines longer than 1 MiB are cut to their first 1 MiB and reading continues. The 
   ]
 }
 ```
+
+**Exit codes:** `0` no findings, `1` error, `2` one or more findings.
 
 ---
 
@@ -159,6 +161,8 @@ Check uptime and latency of one or more services.
 }
 ```
 
+**Exit codes:** `0` all targets up, `1` error, `2` one or more targets down or timed out.
+
 ---
 
 ## `annave doc search`
@@ -218,6 +222,8 @@ Default extensions: `.md`, `.mdx`, `.txt`, `.rst`, `.html`, `.yaml`, `.json`.
   }
 ]
 ```
+
+**Exit codes:** `0` on success, including no results (JSON mode prints `[]`), `1` error.
 
 ---
 
@@ -295,6 +301,8 @@ If every resource type fails to scan (for example, the cluster is unreachable), 
   ]
 }
 ```
+
+**Exit codes:** `0` no idle resources, `1` error, `2` one or more idle resources.
 
 ---
 
@@ -374,6 +382,8 @@ Both Kubernetes scans check init containers and ephemeral containers as well as 
 }
 ```
 
+**Exit codes:** `0` no findings, `1` error, `2` one or more findings.
+
 ---
 
 ## `annave infra validate`
@@ -438,6 +448,8 @@ If `helm lint` fails without printing an `[ERROR]` line (for example, the chart 
   ]
 }
 ```
+
+**Exit codes:** `0` validation passed, `1` error, `2` validation FAILED.
 
 ---
 
@@ -508,3 +520,5 @@ Fetch cloud costs and detect anomalies.
   ]
 }
 ```
+
+**Exit codes:** `0` no anomalies, `1` error, `2` one or more anomalies. `--provider gcp` and `--provider azure` are not implemented and exit `1`.

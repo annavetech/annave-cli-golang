@@ -1,9 +1,10 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package validator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -35,7 +36,7 @@ var unhealthyStatuses = map[string]string{
 }
 
 // validateHelm inspects deployed Helm releases (empty target) or lints a chart directory.
-func validateHelm(run commandRunner, target string) (*domain.ValidationResult, error) {
+func validateHelm(ctx context.Context, run commandRunner, target string) (*domain.ValidationResult, error) {
 	helmBin, err := run.LookPath("helm")
 	if err != nil {
 		return nil, fmt.Errorf("helm binary not found in PATH — install helm to use infra validate with Helm")
@@ -48,7 +49,7 @@ func validateHelm(run commandRunner, target string) (*domain.ValidationResult, e
 
 	if target == "" || target == "." {
 		// No target → inspect deployed releases in the cluster.
-		issues, err := listReleases(run, helmBin)
+		issues, err := listReleases(ctx, run, helmBin)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +60,7 @@ func validateHelm(run commandRunner, target string) (*domain.ValidationResult, e
 		if err != nil {
 			return nil, err
 		}
-		issues, err := lintChart(run, helmBin, abs)
+		issues, err := lintChart(ctx, run, helmBin, abs)
 		if err != nil {
 			return nil, err
 		}
@@ -72,8 +73,8 @@ func validateHelm(run commandRunner, target string) (*domain.ValidationResult, e
 
 // listReleases runs helm list -A --all and flags unhealthy or superseded releases.
 // Without --all, helm lists only deployed and failed releases.
-func listReleases(run commandRunner, helmBin string) ([]domain.ValidationIssue, error) {
-	out, err := run.Output("", helmBin, "list", "-A", "-o", "json", "--all")
+func listReleases(ctx context.Context, run commandRunner, helmBin string) ([]domain.ValidationIssue, error) {
+	out, err := run.Output(ctx, "", helmBin, "list", "-A", "-o", "json", "--all")
 	if err != nil {
 		return nil, fmt.Errorf("helm list failed: %w", err)
 	}
@@ -110,9 +111,9 @@ func listReleases(run commandRunner, helmBin string) ([]domain.ValidationIssue, 
 }
 
 // lintChart runs helm lint against a chart directory and maps its output to ValidationIssues.
-func lintChart(run commandRunner, helmBin, chartPath string) ([]domain.ValidationIssue, error) {
+func lintChart(ctx context.Context, run commandRunner, helmBin, chartPath string) ([]domain.ValidationIssue, error) {
 	// helm lint exits non-zero on errors; capture combined output regardless.
-	out, runErr := run.CombinedOutput(helmBin, "lint", chartPath)
+	out, runErr := run.CombinedOutput(ctx, helmBin, "lint", chartPath)
 
 	var issues []domain.ValidationIssue
 	lintErrors := 0

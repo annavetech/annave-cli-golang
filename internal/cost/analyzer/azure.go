@@ -1,6 +1,6 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package analyzer
 
 import (
@@ -20,6 +20,6 @@ func (a *azureAnalyzer) Analyze(_ context.Context, _ port.AnalyzeOptions) (*doma
 	return nil, shared.New(
 		shared.ErrCodeNotImplemented,
 		shared.StageRuntime,
-		"Azure cost analysis is not yet implemented — use --provider aws",
+		"Azure cost analysis is not implemented yet. Use --provider aws.",
 	)
 }

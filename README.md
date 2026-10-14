@@ -3,7 +3,7 @@
 A single static binary that bundles seven engineering tools under one command. No runtime dependencies. No agents. No cloud sign-up.
 
 * **Author:** Anna Veretennykova · [www.annave.tech](https://www.annave.tech)
-* **License:** Apache 2.0
+* **License:** MIT
 
 ---
 
@@ -100,7 +100,7 @@ Flags:
   --stdin         read from stdin instead of a file
   --format        output format: plain, json, table (default: plain)
   --since         only include entries after this time (1h, 30m, 2006-01-02, or RFC3339)
-  --level         minimum log level: debug, info, warn, error
+  --level         minimum log level: debug, info, warn, error, critical
 ```
 
 Detects the log format automatically (JSON structured, nginx access, syslog, plain text). Surfaces three types of findings: repeated error patterns (3+ occurrences), time-based spikes (3× the rolling average), and message clusters (normalised duplicates grouped together).
@@ -266,7 +266,7 @@ Flags:
 
 Note: AWS Cost Explorer charges $0.01 per API request.
 
-GCP and Azure display a notice that they are not yet implemented.
+GCP and Azure are not yet implemented; the command prints an error and exits 1.
 
 ```bash
 annave cost scan

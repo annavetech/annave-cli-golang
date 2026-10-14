@@ -1,10 +1,9 @@
 // Copyright 2026 Anna Veretennykova
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -80,7 +79,7 @@ func runSecurityAudit(cmd *cobra.Command, args []string) error {
 	}
 
 	s := scanner.New()
-	report, err := s.Audit(context.Background(), target, opts)
+	report, err := s.Audit(cmd.Context(), target, opts)
 	if err != nil {
 		return err
 	}
@@ -89,7 +88,13 @@ func runSecurityAudit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printAuditReport(p, report)
-	return p.Err()
+	if err := p.Err(); err != nil {
+		return err
+	}
+	if len(report.Findings) > 0 {
+		return errProblemsFound
+	}
+	return nil
 }
 
 // printWarnings writes one "warning:" line per entry to w.
