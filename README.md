@@ -104,11 +104,11 @@ tend log analyze [file] [flags]
 Flags:
   --stdin         read from stdin instead of a file
   --format        output format: plain, json, table (default: plain)
-  --since         only include entries after this time (1h, 30m, 2006-01-02, or RFC3339)
-  --level         minimum log level: debug, info, warn, error, critical
+  --since         only include entries at or after this time (1h, 30m, 2006-01-02, or RFC3339)
+  --level         minimum log level: debug, info, warn, error, critical (warning is accepted as warn)
 ```
 
-Detects the log format automatically (JSON structured, nginx access, syslog, plain text). Surfaces three types of findings: repeated error patterns (3+ occurrences), time-based spikes (3x the rolling average), and message clusters (normalised duplicates grouped together).
+Detects the log format automatically (JSON structured, nginx access, syslog, plain text). Surfaces three types of findings for warn, error, and critical entries: repeated messages (3+ occurrences), error spikes (a minute with at least 5 errors and 3x the average errors per minute), and message clusters (messages that match after numbers, IDs, and addresses are replaced).
 
 ```bash
 tend log analyze /var/log/nginx/access.log --since 1h --level error
@@ -123,9 +123,9 @@ cat app.log | tend log analyze --stdin --format json
 tend health check [targets...] [flags]
 
 Flags:
-  --timeout       per-target timeout (default: 10s)
+  --timeout       per-target timeout (default: 10s, at most 10s)
   --format        output format: plain, json, table (default: plain)
-  --chain         stop at first failure (dependency chain mode)
+  --chain         check targets in order and stop at the first one that is not up
 ```
 
 Target formats:
@@ -135,7 +135,7 @@ Target formats:
 | `https://api.example.com` | HTTP (expects a 2xx response) |
 | `tcp://db.internal:5432` | TCP port connectivity |
 | `dns://api.example.com` | DNS resolution |
-| `db.internal:5432` | TCP (auto-detected) |
+| `db.internal:5432` | TCP (auto-detected from the `:`) |
 | `api.example.com` | DNS (auto-detected) |
 
 ```bash
@@ -153,11 +153,11 @@ tend doc search [query] [flags]
 Flags:
   -p, --path      root directory to search (default: .)
   --format        output format: plain, json, table (default: plain)
-  --open          open the top result in $EDITOR
+  --open          open the top result in $EDITOR (then $VISUAL, then code, nvim, vim, nano, vi)
   --ext           file extensions to include (repeatable: --ext md --ext txt)
 ```
 
-Searches `.md`, `.txt`, `.rst`, `.html`, `.yaml`, and `.json` files. Multiple words are treated as AND terms. Prefix matching is supported.
+Searches `.md`, `.mdx`, `.txt`, `.rst`, `.html`, `.htm`, `.yaml`, `.yml`, and `.json` files. Each query word adds to a file's score, so a file matches when any word matches. A word with no whole-word match anywhere matches words that start with it, at half the score.
 
 ```bash
 tend doc search "rate limiting" --path ./docs
@@ -176,13 +176,13 @@ Flags:
   -n, --namespace  limit scan to a specific namespace (default: all)
   --context        kubeconfig context to use
   --kubeconfig     path to kubeconfig file
-  --dry-run        preview only, make no changes (default: true)
+  --dry-run        label the output as a dry run (default: true); the scan never deletes anything
   --format         output format: plain, json, table (default: plain)
 ```
 
 Requires a reachable Kubernetes cluster. Uses the standard kubeconfig resolution: the `--kubeconfig` flag, then `$KUBECONFIG`, then `~/.kube/config`.
 
-Finds: completed and failed pods, CrashLoopBackOff pods, pods pending longer than 10 minutes, lost PVCs, PVCs pending longer than 1 hour, bound PVCs unmounted for over 24 hours, orphaned ConfigMaps (no owner references, older than 30 days), and empty namespaces.
+Finds: completed and failed pods, CrashLoopBackOff pods, pods pending and older than 10 minutes, lost PVCs, pending PVCs older than 1 hour, bound PVCs older than 24 hours that no pod uses, orphaned ConfigMaps (no owner references, older than 30 days), and empty namespaces older than 24 hours.
 
 ```bash
 tend cleanup scan
@@ -202,17 +202,18 @@ Flags:
   --format        output format: plain, json, table (default: plain)
   --kubeconfig    kubeconfig file (k8s-live only)
   --context       kubeconfig context (k8s-live only)
+  --namespace     namespace to scan (k8s-live only, default: all namespaces)
 ```
 
 **Scan types:**
 
-`secrets` scans the file tree for 12 secret patterns. It does not respect `.gitignore`, so `.env` files are scanned on purpose. Skips binary files and generated directories (`node_modules`, `vendor`, `dist`, `.git`, `.angular`).
+`secrets` scans the file tree for 12 secret patterns (`SECRET001` to `SECRET012`). It does not respect `.gitignore`, so `.env` files are scanned on purpose. Skips binary files, files over 5 MB, and generated directories (`node_modules`, `vendor`, `dist`, `build`, `.git`, `.angular`, `__pycache__`, `.next`, `coverage`, `.cache`).
 
-`sast` runs static analysis pattern matching. Go: 10 rules (command injection, SQL injection, path traversal, SSRF, weak random, weak crypto, plaintext HTTP server, unbounded read, unsafe import, hardcoded credentials). TypeScript: 5 rules (innerHTML XSS, dangerouslySetInnerHTML, eval, document.write, sensitive localStorage).
+`sast` runs static analysis pattern matching. Go: 10 rules, `GO001` to `GO010` (command injection, SQL injection, path traversal, SSRF, weak random, weak crypto, plaintext HTTP server, unbounded read, unsafe import, hardcoded credentials). TypeScript and JavaScript: 5 rules, `TS001` to `TS005` (innerHTML XSS, dangerouslySetInnerHTML, eval, document.write, sensitive localStorage).
 
-`k8s-live` checks running workloads via client-go. Flags containers running as root, missing resource limits, privileged containers, hostPath mounts, missing readiness probes, hostNetwork, and hostPID.
+`k8s-live` checks running pods via client-go with 7 rules, `K8S001` to `K8S007`: hostNetwork, hostPID, hostPath volumes, privileged containers, containers that may run as root, missing resource limits, and missing readiness probes.
 
-`k8s-local` validates local YAML manifests. Same rules as `k8s-live` plus unpinned image tags.
+`k8s-local` validates local YAML manifests. Same rules as `k8s-live` plus `K8S008`, unpinned image tags.
 
 ```bash
 tend security audit .
@@ -239,10 +240,10 @@ Target auto-detection:
 |---|---|
 | `*.json`, `*.tfplan` | terraform plan analysis |
 | directory containing `Chart.yaml` | helm chart lint |
-| `*.yaml`, `*.yml`, directory | Kubernetes manifest validation |
-| no target | helm release status (`helm list -A`) |
+| any other file or directory | Kubernetes manifest validation |
+| no target, or `.` | helm release status (`helm list -A --all`) |
 
-`terraform` and `helm` require their respective CLIs in `$PATH`. The command returns a clear error if they are not found.
+A `.tfplan` file needs `terraform` in `$PATH`; a `.json` plan is read directly. Helm checks need `helm` in `$PATH`. The command returns a clear error if a needed CLI is not found. The validation fails when any issue is medium or above.
 
 ```bash
 tend infra validate plan.json
@@ -260,7 +261,7 @@ tend cost scan [flags]
 
 Flags:
   --provider      cloud provider: aws, gcp, azure (default: aws)
-  --since         billing period start date (YYYY-MM-DD, default: 30 days ago)
+  --since         billing period start date (YYYY-MM-DD, default: 31 days before today)
   --format        output format: plain, json, table (default: plain)
 ```
 
@@ -271,7 +272,7 @@ Flags:
 
 Note: AWS Cost Explorer charges $0.01 per API request.
 
-GCP and Azure are not yet implemented; the command prints an error and exits 1.
+GCP and Azure are not yet implemented; the command prints an `ERR_NOT_IMPLEMENTED` error and exits 1.
 
 ```bash
 tend cost scan
@@ -289,18 +290,19 @@ Every command supports `--format` with three values:
 - `json`: structured JSON, suitable for piping into `jq` or other tools
 - `table`: tabular output for wide terminals
 
-JSON output follows the same structure across all commands: the top-level keys match the domain model. See `docs/COMMANDS.md` for the exact JSON shapes per command.
+JSON keys are snake_case and match the domain model of each command. Durations are given in milliseconds (`latency_ms`, `timeout_ms`). See `docs/COMMANDS.md` for the exact JSON shapes per command.
+
+Exit codes are the same for every command: `0` nothing to report, `1` error, `2` problems found (findings, down targets, idle resources, anomalies, or a failed validation).
 
 ---
 
 ## Configuration
 
-Limits and messages are embedded in the binary from YAML files in `internal/shared/config/`. To change a limit, edit the YAML and rebuild.
+Limits are embedded in the binary from `internal/shared/config/limits.yaml`. To change a limit, edit the YAML and rebuild.
 
 | File | Controls |
 |---|---|
-| `internal/shared/config/limits.yaml` | File size limits, timeouts, max results per module |
-| `internal/shared/config/messages.yaml` | Error code to message mapping |
+| `internal/shared/config/limits.yaml` | Log line cap, health timeout and concurrency, doc search size, depth, and result limits, cleanup timeout and result cap |
 
 See `docs/CONFIGURATION.md` for every key and its default value.
 

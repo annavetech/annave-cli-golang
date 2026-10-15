@@ -4,7 +4,7 @@ description: Seven practical scenarios with real shell examples and notes on edg
              No marketing language, just what works and what to watch for.
 version:     0.1.0
 created:     2026-05-16
-updated:     2026-05-16
+updated:     2026-10-15
 -->
 
 # Use Cases
@@ -28,10 +28,10 @@ kubectl logs -n production deploy/api --since=1h > /tmp/api.log
 tend log analyze /tmp/api.log --since 1h --level error
 ```
 
-Pipe from a running process:
+Pipe the end of a log from another command. The analysis runs when the input ends, so pass a finite stream, not `tail -f`:
 
 ```bash
-tail -f /var/log/app.log | tend log analyze --stdin --level error
+tail -n 50000 /var/log/app.log | tend log analyze --stdin --level error
 ```
 
 For machine-readable output to feed into another tool:
@@ -41,9 +41,9 @@ tend log analyze /var/log/app.log --format json | jq '.findings[] | select(.seve
 ```
 
 **What to watch:**
-- The analyzer detects format automatically. If a log file mixes formats (JSON lines then plain text after a restart), lines that do not match the detected format are counted in `total_lines` but not in `parsed_lines`.
+- The analyzer detects the format from the first non-blank line and applies it to every line. If a log file mixes formats (JSON lines then plain text after a restart), lines that do not match keep the whole line as the message, with no timestamp. `parsed_lines` counts every non-blank line.
 - The `--since` filter applies to the timestamp parsed from each log entry, not to the file modification time. Entries without a parseable timestamp are always included.
-- Spike detection requires at least 10 minutes of log data to compute a meaningful rolling average. Short log files may produce no spike findings even if one minute has many errors.
+- Spike detection needs at least 5 error entries in at least 2 different minutes. A minute is a spike when it has at least 5 errors and at least 3x the average of the minutes that have errors. A log that covers one minute produces no spike findings.
 
 ---
 
@@ -81,7 +81,7 @@ tend health check https://api.example.com
 ```
 
 **What to watch:**
-- HTTP checks follow up to 5 redirects. A `301` to HTTPS from an `http://` target counts as up if the final response is 2xx.
+- HTTP checks follow up to 4 redirects. A `301` to HTTPS from an `http://` target counts as up if the final response is 2xx.
 - TCP checks only verify that the port accepts a connection. They do not send any protocol bytes or verify TLS.
 - DNS checks call the system resolver. Split-horizon DNS (internal vs external) means the result depends on where `tend` is running. Running it inside the cluster gives different results than running it from a developer laptop.
 
@@ -114,10 +114,10 @@ tend doc search "circuit breaker" --format table
 ```
 
 **What to watch:**
-- The index is built fresh on each run. There is no persistent index file. For a directory with many thousands of files this adds latency. The default max depth is 10 levels; override it in `limits.yaml` if needed.
+- The index is built fresh on each run. There is no persistent index file. For a directory with many thousands of files this adds latency. Directories more than 10 levels below the search root are skipped; change `doc.max_depth` in `limits.yaml` if needed.
 - Files larger than 10 MB are skipped. This is configurable in `limits.yaml`.
-- `--open` without a `$EDITOR` set falls back to the OS default application for the file type (macOS `open`, Linux `xdg-open`). Line-awareness is only available for `nvim`, `vim`, `code`, and `nano`.
-- The inverted index tokenises on word boundaries. Hyphenated words (`rate-limit`) are split into tokens (`rate`, `limit`). Search for `rate limit` to match both forms.
+- `--open` uses `$EDITOR`, then `$VISUAL`. Without either, it uses the first of `code`, `nvim`, `vim`, `nano` found on `PATH`, and `vi` otherwise. Line-awareness is only available for `nvim`, `vim`, `code`, and `nano`.
+- The index keeps `-` and `_` inside words, so `rate-limit` and `rate_limit` are single tokens. A search for `rate` matches them by prefix only when no file has `rate` as a whole word. Words shorter than 3 characters are not indexed.
 
 ---
 
@@ -148,9 +148,9 @@ tend cleanup scan --context production-eu --kubeconfig ~/.kube/prod.yaml
 ```
 
 **What to watch:**
-- The scan is read-only and dry-run by default. It will never delete anything.
+- The scan is read-only. It never deletes anything, with or without `--dry-run=false`.
 - ConfigMap orphan detection only checks `ownerReferences`. A ConfigMap referenced only by label selector (not by owner reference) will appear as orphaned. Verify before acting.
-- Namespace emptiness is checked using `Limit: 1` list queries for pods, deployments, StatefulSets, and services. Other resource types (CronJobs, Jobs, DaemonSets) are not checked. A namespace with only CronJobs will appear empty.
+- Namespace emptiness is checked using `Limit: 1` list queries for pods, deployments, StatefulSets, and services. Other resource types (CronJobs, Jobs, DaemonSets) are not checked. A namespace with only CronJobs will appear empty. Namespaces created in the last 24 hours and `default` are not flagged.
 - Large clusters with many resources may hit the `max_resources: 1000` limit in `limits.yaml`. Increase it if needed, but be aware that the scan timeout also applies.
 
 ---
@@ -183,10 +183,10 @@ tend security audit . --type secrets --format json | jq '.findings | map(select(
 
 **What to watch:**
 - The scanner does NOT respect `.gitignore`. This is intentional: `.env` files are in `.gitignore` precisely because they contain secrets, so they must be scanned.
-- Binary files are skipped (detected by null bytes in the first 512 bytes).
-- SAST uses regex pattern matching, not an AST. This means false positives are possible: a comment containing `http.ListenAndServe` will match rule `GO008`. Review findings before acting.
+- Binary files are skipped (detected by a zero byte in the first 512 bytes). Files over 5 MB are skipped too.
+- SAST uses regex pattern matching, not an AST. This means false positives are possible: a comment containing `http.ListenAndServe(` will match rule `GO007`. Review findings before acting.
 - The SAST scanner will flag its own rule definition strings if you run it against this repository. This is a known limitation of regex SAST without AST support.
-- Secret values in findings are redacted: the first 12 characters are shown and the rest is masked with asterisks. This is enough to identify the secret without logging the full value.
+- Secret values in findings are redacted: the first 12 characters are shown, followed by up to 8 asterisks and `...`. This is enough to identify the secret without logging the full value.
 
 ---
 
@@ -209,7 +209,7 @@ Or if you already have the JSON plan:
 tend infra validate plan.json --format table
 ```
 
-In CI, where the command exits `2` when the validation fails:
+In CI, where the command exits `2` when the validation fails (any medium, high, or critical issue):
 
 ```bash
 terraform plan -out=plan.tfplan
@@ -233,7 +233,7 @@ tend infra validate --type helm --format table
 - `terraform` must be in `$PATH`. If it is not found, the command returns a clear error. The validator also accepts a raw `terraform show -json` JSON file. It does not need to call the binary if you pass the file directly.
 - `helm` must be in `$PATH` for release listing and chart linting. The validator checks for the binary at runtime and returns a clear error if it is missing.
 - Terraform validation reads `resource_changes` from the plan JSON. It does not evaluate the actual change. It classifies by resource type and action. A `replace` on an EC2 instance is flagged as destructive even if the instance has no data.
-- Kubernetes YAML validation walks directories recursively. Files that do not parse as valid YAML are skipped with a warning, not an error.
+- Kubernetes YAML validation walks directories recursively. Documents that do not parse as valid YAML are skipped without a warning. A file that cannot be read is named in a `warning:` line.
 
 ---
 
@@ -260,8 +260,8 @@ tend cost scan --format json | jq -r '.records[] | [.service, .amount] | @csv'
 ```
 
 **What to watch:**
-- AWS Cost Explorer data has a 24-hour delay. The scan always sets the end date to yesterday. You cannot fetch today's costs.
-- For accounts with less than 14 days of data, `GetCostForecast` returns an error. The forecast is silently omitted, and the cost data is still returned.
+- The scan sets the request end date to yesterday. Cost Explorer treats the end date as exclusive, so the last day in the report is the day before yesterday.
+- If `GetCostForecast` returns an error, for example because the account has too little cost history, the forecast is omitted without a message, and the cost data is still returned.
 - The Cost Explorer API is global. It does not use the AWS region set in `~/.aws/config`. If you have regional credential profiles, the default profile is used unless `AWS_PROFILE` is set.
 - Cost Explorer charges $0.01 per API request. Each `tend cost scan` run makes 2 requests (cost data + forecast). Running it in a tight loop will accumulate charges.
 - GCP and Azure are not yet implemented. The command prints an error and exits `1`.

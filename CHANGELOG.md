@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-15
+
+### Fixed
+
+- Infra validate reports TF002 for a replaced data-holding resource. It was reported as TF001.
+
+### Changed
+
+- Health check JSON gives `latency_ms` and `target.timeout_ms` in milliseconds, and the `target` keys are snake_case. This breaks consumers of the previous health JSON.
+- The unused `log.max_file_size_mb` setting and messages.yaml are removed.
+
+### Documentation
+
+- The docs are corrected to match the code.
+
+## [0.2.0] - 2026-10-14
+
 ### Added
 
 - CI runs vet, build, tests, golangci-lint, govulncheck, go mod tidy and gofmt checks.

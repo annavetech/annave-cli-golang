@@ -4,7 +4,7 @@ description: What the security audit checks, known limitations and false positiv
              how authentication works for live checks, and responsible disclosure.
 version:     0.1.0
 created:     2026-05-16
-updated:     2026-05-16
+updated:     2026-10-15
 -->
 
 # Security Notes
@@ -17,7 +17,7 @@ The audit command has four scan types. Each targets a different attack surface.
 
 ### Secret scanning (`--type secrets`)
 
-Walks the file tree and matches 12 regex patterns against every non-binary file. The patterns are designed to find credentials that were accidentally committed, not credentials that are correctly stored in a secrets manager.
+Walks the file tree and matches 12 regex patterns against every line of every non-binary file. The patterns are designed to find credentials that were accidentally committed, not credentials that are correctly stored in a secrets manager.
 
 **What it scans:**
 - All files in the target directory, recursively
@@ -26,12 +26,13 @@ Walks the file tree and matches 12 regex patterns against every non-binary file.
 - Shell scripts and Makefiles
 
 **What it deliberately skips:**
-- Binary files (detected by null bytes in the first 512 bytes of the file)
-- Generated directories: `node_modules`, `vendor`, `dist`, `.git`, `.angular`
+- Binary files (detected by a zero byte in the first 512 bytes of the file)
+- Symlinks, empty files, and files over 5 MB
+- Generated directories: `node_modules`, `vendor`, `dist`, `build`, `.git`, `.angular`, `__pycache__`, `.next`, `coverage`, `.cache`
 
-**Critical design choice: `.gitignore` is ignored.** The scanner does not read or respect `.gitignore`. The reason: `.env` files are in `.gitignore` precisely because they contain secrets. A secret scanner that skips `.gitignore` entries would miss the most common source of leaked credentials. If you want to scan only committed files, run `git diff HEAD -- . | tend log analyze --stdin` or use a git-aware tool like `truffleHog` in addition to this scanner.
+**Critical design choice: `.gitignore` is ignored.** The scanner does not read or respect `.gitignore`. The reason: `.env` files are in `.gitignore` precisely because they contain secrets. A secret scanner that skips `.gitignore` entries would miss the most common source of leaked credentials. To scan only committed files or git history, use a git-aware tool like `truffleHog` in addition to this scanner.
 
-**Secret values in output are redacted.** The first 12 characters of a matched secret are shown; the remainder is replaced with asterisks. This is enough to identify which credential was found without logging the full value.
+**Secret values in output are redacted.** The first 12 characters of a matched secret are shown, followed by up to 8 asterisks and `...`. This is enough to identify which credential was found without logging the full value.
 
 ### SAST (`--type sast`)
 
@@ -39,23 +40,25 @@ Line-by-line regex pattern matching for security-relevant code patterns. It is n
 
 **Known limitation: false positives on rule definitions.** If you run `tend security audit --type sast .` against this repository, the SAST scanner will flag its own rule definition strings (the regex patterns contain the strings they match). This is expected and harmless. Run SAST against your project's source, not against this tool.
 
-**Go rules (10):** Command injection (`exec.Command` + string concat), SQL injection (`db.Query`/`db.Exec` + string concat), path traversal (`os.Open` without `filepath.Clean`), SSRF (`http.Get`/`http.Post` with variable URL), weak random (`math/rand`), weak crypto (`crypto/md5`, `crypto/sha1`), plaintext HTTP server (`http.ListenAndServe` without TLS), unbounded read (`io.ReadAll` without `io.LimitReader`), unsafe memory (`import "unsafe"`), hardcoded credential (assignment to `password`, `secret`, or `token` variable with a string literal).
+**Go rules (10, `.go` files):** `GO001` command injection (`exec.Command` or `exec.CommandContext` with `fmt.Sprintf` in the call), `GO002` SQL injection (`Query`, `QueryRow`, `Exec`, `QueryContext`, `ExecContext`, or `Prepare` with `fmt.Sprintf` or `+` concatenation), `GO003` path traversal (`os.Open`, `os.ReadFile`, `ioutil.ReadFile`, `os.Stat`, or `os.Remove` with `r.URL`, `r.Form`, `r.PostForm`, `r.Header`, or `r.PathValue`), `GO004` SSRF (`http.Get`, `http.Post`, or `http.NewRequest` with a `r.`, `req.`, or `request.` value), `GO005` weak random (`"math/rand"` import), `GO006` weak crypto (`"crypto/md5"` or `"crypto/sha1"` import), `GO007` plaintext HTTP server (any `http.ListenAndServe(` call), `GO008` unbounded read (any `io.ReadAll(` or `ioutil.ReadAll(` call), `GO009` `"unsafe"` import, `GO010` hardcoded credential (`password`, `passwd`, `secret`, `token`, `api_key`, or `auth_key` assigned a string literal of 6 or more characters).
 
-**TypeScript rules (5):** innerHTML XSS, `dangerouslySetInnerHTML` (React), `eval()`, `document.write()`, sensitive data in `localStorage`.
+**TypeScript and JavaScript rules (5, `.ts`, `.tsx`, `.js`, `.jsx` files):** `TS001` innerHTML assignment, `TS002` `dangerouslySetInnerHTML`, `TS003` `eval()`, `TS004` `document.write()`, `TS005` `localStorage.setItem` with a token, password, secret, auth, or key name.
 
 **What it does not check:** Call graphs, data flow, taint analysis, or cross-file analysis. A `db.Query` call that receives its argument from a function parameter will not be flagged unless the pattern matches at the call site. For deeper analysis, use a dedicated SAST tool (Semgrep, CodeQL).
 
 ### Kubernetes live checks (`--type k8s-live`)
 
-Reads live workload definitions from the cluster API. Does not modify any resource. Requires `list` and `get` permissions on pods in the target namespace.
+Lists pods from the cluster API, in `--namespace` or in all namespaces. Does not modify any resource. Requires `list` permission on pods in the namespace, or cluster-wide without `--namespace`.
 
-**Checked rules:** Container running as root or without `runAsNonRoot: true` (K8S001), no CPU limit (K8S002), no memory limit (K8S003), privileged container (`privileged: true`) (K8S004), `hostPath` volume mount (K8S005), no readiness probe on a Running pod (K8S006), `hostNetwork: true` or `hostPID: true` (K8S007).
+**Checked rules:** `hostNetwork: true` (K8S001), `hostPID: true` (K8S002), `hostPath` volume (K8S003), privileged container (K8S004), container that may run as root (K8S005), container without resource limits (K8S006), container without a readiness probe (K8S007).
+
+K8S005 fires when the effective `runAsUser` (container value over pod value) is 0, or when no `runAsUser` is set and `runAsNonRoot` is not `true`. Init and ephemeral containers are checked too. K8S006 does not apply to ephemeral containers, and K8S007 applies only to regular containers.
 
 ### Kubernetes local manifest checks (`--type k8s-local`)
 
 Parses YAML files from disk. Does not require a cluster connection. Handles multi-document YAML files (documents separated by `---`).
 
-Same rules as `k8s-live` plus K8S008: image tag is `:latest` or missing (non-deterministic deployments).
+Reads `.yaml` and `.yml` files and checks Pod, Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, and CronJob specs. Same rules as `k8s-live` plus K8S008: image tag is `:latest` or missing (non-deterministic deployments). A file that cannot be read is named in a `warning:` line, and a document that does not parse is skipped.
 
 ---
 
@@ -78,7 +81,7 @@ Minimum required RBAC permissions:
 rules:
 - apiGroups: [""]
   resources: ["pods"]
-  verbs: ["list", "get"]
+  verbs: ["list"]
 ```
 
 ### `tend cost scan`
@@ -113,7 +116,7 @@ Cost Explorer is a global service, so region configuration does not affect it.
 
 ## What the CLI does NOT do
 
-- **No outbound network calls from the analysis modules.** Log analysis, doc search, SAST, secret scanning, and infra validation make no network requests. They work entirely on local files.
+- **No outbound network calls from the analysis modules.** Log analysis, doc search, SAST, secret scanning, local Kubernetes checks, and infra validation of Terraform plans, charts, and manifests make no network requests. They work entirely on local files. `tend infra validate` with no target runs `helm list`, which contacts the cluster.
 - **No telemetry.** The CLI collects nothing. No usage data, no error reporting to an external service.
 - **No modification of resources.** All commands are read-only. `tend cleanup scan` is dry-run by default and does not delete resources even with `--dry-run=false`. It only reports what it finds.
 - **No shell injection.** `tend infra validate` shells out to `terraform` and `helm` with fixed argument lists constructed from validated flag values. User-supplied paths are passed as arguments, not interpolated into shell strings.
