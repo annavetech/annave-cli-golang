@@ -140,18 +140,19 @@ func classifyChange(rc tfResourceChange) []domain.ValidationIssue {
 
 	// Data destruction risk.
 	if desc, ok := destructiveDataRisk[rc.Type]; ok {
-		if isDelete {
-			issues = append(issues, domain.ValidationIssue{
-				Severity: domain.SeverityCritical,
-				Rule:     "TF001",
-				Message:  fmt.Sprintf("Destructive delete: %s (%s)", rc.Address, desc),
-				Resource: rc.Address,
-			})
-		} else if isReplace {
+		// A replace also holds a delete action, so it is tested first.
+		if isReplace {
 			issues = append(issues, domain.ValidationIssue{
 				Severity: domain.SeverityCritical,
 				Rule:     "TF002",
 				Message:  fmt.Sprintf("Destructive replace: %s (%s). It will be destroyed and recreated", rc.Address, desc),
+				Resource: rc.Address,
+			})
+		} else if isDelete {
+			issues = append(issues, domain.ValidationIssue{
+				Severity: domain.SeverityCritical,
+				Rule:     "TF001",
+				Message:  fmt.Sprintf("Destructive delete: %s (%s)", rc.Address, desc),
 				Resource: rc.Address,
 			})
 		}

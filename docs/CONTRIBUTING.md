@@ -4,7 +4,7 @@ description: How to add a module or rule, run tests, submit a pull request,
              and what code style is expected.
 version:     0.1.0
 created:     2026-05-16
-updated:     2026-05-16
+updated:     2026-10-15
 -->
 
 # Contributing
@@ -39,7 +39,7 @@ go test ./...
 go test -v ./internal/log/...
 
 # Single test function
-go test -v -run TestAnalyzer_Analyze ./internal/log/...
+go test -v -run TestAnalyzeReturnsReadError ./internal/log/...
 
 # Race detector
 go test -race ./...
@@ -56,9 +56,9 @@ go test -race ./...
   // SPDX-License-Identifier: MIT
   ```
 - Comments only when the reason is non-obvious: not what the code does, but why it does it that way.
-- No test file uses mocks for the filesystem, Kubernetes API, or AWS SDK. Tests call the domain logic directly or use real fixtures. For adapter tests that require external APIs (AWS Cost Explorer, live k8s cluster), use build tags or skip when the dependency is unavailable.
-- `gofmt` is the formatter. No additional linters are required, but `go vet ./...` must pass.
-- Error codes must be added to `internal/shared/config/messages.yaml` before they are used in Go code. Do not hardcode message strings in `.go` files. Use the helpers in `internal/shared/errors`.
+- Tests call the domain logic directly or use real fixtures from `testdata/`. Kubernetes adapter tests run against a local `httptest` API server, and helm tests replay recorded command output through a fake runner. No test calls AWS or a real cluster.
+- CI (`.github/workflows/ci.yml`) runs `go vet ./...`, `go build ./...`, `go test -race ./...`, golangci-lint v2.14.0 (`.golangci.yml`), govulncheck, `go mod tidy -diff`, and `gofmt -s -l .`. All of them must pass.
+- Return wrapped Go errors with context. Use `internal/shared/errors` only for an error that needs a machine-readable code, such as `ERR_NOT_IMPLEMENTED`.
 - Every command must support `--format plain|json|table`. The plain format is always the default.
 
 ---
@@ -71,9 +71,8 @@ See `docs/ARCHITECTURE.md` for the full walkthrough. Short version:
 2. Create `internal/<module>/port/port.go` with a single interface.
 3. Create the adapter under `internal/<module>/<adapter>/` implementing the port interface.
 4. Create `cmd/tend/cmd/<module>.go` (parent command) and `cmd/tend/cmd/<module>_<subcommand>.go` (subcommand).
-5. Add any configurable limits to `internal/shared/config/limits.yaml`.
-6. Add any new error codes to `internal/shared/config/messages.yaml`.
-7. Write a test that exercises the adapter with a real fixture (not a mock).
+5. Add any configurable limits to `internal/shared/config/limits.yaml` and a matching field in `internal/shared/config/config.go`.
+6. Write a test that exercises the adapter with a real fixture.
 
 ---
 

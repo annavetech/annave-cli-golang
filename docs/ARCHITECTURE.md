@@ -4,7 +4,7 @@ description: Hexagonal architecture overview, module structure, port interfaces,
              package map, and instructions for adding a new module or rule.
 version:     0.1.0
 created:     2026-05-16
-updated:     2026-05-16
+updated:     2026-10-15
 -->
 
 # Architecture
@@ -51,7 +51,7 @@ Adding a new provider for an existing module: implement the port interface in a 
 github.com/annavetech/tend
 |-- cmd/
 |   `-- tend/
-|       |-- main.go                   # entry point, calls cmd.Execute()
+|       |-- main.go                   # entry point, resolves the version, exits with cmd.Execute's code
 |       `-- cmd/
 |           |-- root.go               # root command, version subcommand
 |           |-- log.go                # parent: tend log
@@ -72,7 +72,7 @@ github.com/annavetech/tend
 |   |-- shared/
 |   |   |-- errors/                   # Error, error codes, stage constants
 |   |   |-- output/                   # Printer, Format, plain/json/table rendering
-|   |   `-- config/                   # embedded limits.yaml and messages.yaml
+|   |   `-- config/                   # embedded limits.yaml
 |   |-- log/
 |   |   |-- domain/                   # LogEntry, Anomaly, Finding, AnalysisReport
 |   |   |-- port/                     # Analyzer interface
@@ -92,25 +92,26 @@ github.com/annavetech/tend
 |   |-- security/
 |   |   |-- domain/                   # Finding, Severity, AuditType, AuditReport
 |   |   |-- port/                     # Auditor interface
+|   |   |-- auditor/                  # stub Auditor, not used by the CLI
 |   |   `-- scanner/
-|   |       |-- rules/                # shared Rule type, severity constants
+|   |       |-- rules/                # shared Rule type and MustCompile
 |   |       |-- secrets.go            # 12 secret patterns, file tree walk
 |   |       |-- sast_go.go            # 10 Go SAST rules
 |   |       |-- sast_ts.go            # 5 TypeScript SAST rules
 |   |       |-- k8s_live.go           # live cluster checks via client-go
 |   |       |-- k8s_local.go          # local YAML manifest checks
+|   |       |-- walkroot.go           # shared file tree walk helpers
 |   |       `-- scanner.go            # orchestrator, concurrent dispatch
 |   |-- infra/
 |   |   |-- domain/                   # ValidationIssue, ValidationResult, severity constants
 |   |   |-- port/                     # Validator interface
-|   |   `-- validator/                # terraform, helm, k8s_yaml, validator (orchestrator)
+|   |   `-- validator/                # terraform, helm, k8s_yaml, rootfile, runner, validator (orchestrator)
 |   `-- cost/
 |       |-- domain/                   # CostRecord, CostAnomaly, CostReport
 |       |-- port/                     # CostAnalyzer interface
 |       `-- analyzer/                 # aws (full), gcp (stub), azure (stub), analyzer (router)
 `-- internal/shared/config/
-    |-- limits.yaml                   # per-module limits embedded at build time
-    `-- messages.yaml                 # error code to message mapping
+    `-- limits.yaml                   # per-module limits embedded at build time
 ```
 
 ---
@@ -131,6 +132,8 @@ type AnalysisReport struct {
     ParsedLines int
     TimeRange   TimeRange
     Findings    []Finding
+    ParseErrors int
+    Truncated   int
 }
 ```
 
@@ -140,7 +143,7 @@ A single interface that the adapter implements and the CLI calls. One interface 
 
 ```go
 type Analyzer interface {
-    Analyze(r io.Reader, filename string, opts AnalyzeOptions) (*domain.AnalysisReport, error)
+    Analyze(ctx context.Context, r io.Reader, filename string, opts AnalyzeOptions) (*domain.AnalysisReport, error)
 }
 ```
 
@@ -161,7 +164,7 @@ Implements the port interface. May call external APIs, shell out to CLIs, or wal
    }
    ```
 
-3. **Create `internal/<module>/<adapter>/`** implementing the interface. Use `internal/shared/errors` for all errors returned.
+3. **Create `internal/<module>/<adapter>/`** implementing the interface. Return wrapped Go errors with context; use `internal/shared/errors` only for an error that needs a code, such as `ERR_NOT_IMPLEMENTED`.
 
 4. **Create `cmd/tend/cmd/<module>.go`**, the parent command:
    ```go
@@ -210,13 +213,13 @@ Add a new `Rule` to the `goRules` or `tsRules` slice with a `FileExts` restricti
 
 ### Adding a Kubernetes security check
 
-For local YAML (`internal/security/scanner/k8s_local.go`) and live cluster (`internal/security/scanner/k8s_live.go`): add a new `domain.Finding` to the slice returned by `checkManifestDoc` or `checkPodSecurity`. Use the next `K8SXXX` rule ID in sequence.
+For local YAML (`internal/security/scanner/k8s_local.go`) and live cluster (`internal/security/scanner/k8s_live.go`): add a new `domain.Finding` to the slice returned by `checkManifestDoc` or `checkPodSecurity`, or by `checkLocalContainer` or `checkLiveContainer` for a per-container rule. Use the next `K8SXXX` rule ID in sequence.
 
 ---
 
 ## Error handling
 
-All errors returned from adapters and the CLI layer use `Error`:
+Most errors are wrapped Go errors (`fmt.Errorf("...: %w", err)`) and print as plain text. An error that needs a machine-readable code uses `Error` from `internal/shared/errors`; today only the GCP and Azure cost stubs return one, with `ERR_NOT_IMPLEMENTED`:
 
 ```go
 type Error struct {
@@ -226,13 +229,9 @@ type Error struct {
 }
 ```
 
-Stage values: `input`, `analysis`, `output`, `runtime`, `network`, `index`.
-
-Create errors with the helpers in `internal/shared/errors`:
+The package defines the stages `input`, `analysis`, `output`, `runtime`, `network`, `index` and the helpers `New`, `Newf`, `NotImplemented`, `InvalidInput`, and `IOFailure`:
 ```go
-shared.InvalidInput("--since must be a duration or date")
-shared.IOFailure("cannot read file")
-shared.New(shared.ErrCodeParseFailed, shared.StageAnalysis, "invalid YAML")
+shared.New(shared.ErrCodeNotImplemented, shared.StageRuntime, "GCP cost analysis is not implemented yet. Use --provider aws.")
 ```
 
-The root command prints `Error` fields directly. Other error values are printed as-is.
+`Error.Error()` formats as `[<stage>/<code>] <message>`. The root command prints every error as one `error: <text>` line on stderr, or as `{"error":"<text>"}` on stdout in JSON mode, and exits `1`.

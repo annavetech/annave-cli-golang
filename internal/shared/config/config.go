@@ -10,16 +10,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed messages.yaml
-var messagesYAML []byte
-
 //go:embed limits.yaml
 var limitsYAML []byte
-
-// Messages holds user-facing error message templates.
-type Messages struct {
-	Errors map[string]string `yaml:"errors"`
-}
 
 // Limits holds per-module operational limits.
 type Limits struct {
@@ -31,8 +23,7 @@ type Limits struct {
 
 // LogLimits controls resource limits for the log module.
 type LogLimits struct {
-	MaxFileSizeMB int `yaml:"max_file_size_mb"`
-	MaxLines      int `yaml:"max_lines"`
+	MaxLines int `yaml:"max_lines"`
 }
 
 // HealthLimits controls resource limits for the health module.
@@ -56,14 +47,10 @@ type CleanupLimits struct {
 
 // App holds the loaded application configuration.
 var App struct {
-	Messages Messages
-	Limits   Limits
+	Limits Limits
 }
 
 func init() {
-	if err := yaml.Unmarshal(messagesYAML, &App.Messages); err != nil {
-		panic("tend: failed to load messages config: " + err.Error())
-	}
 	if err := yaml.Unmarshal(limitsYAML, &App.Limits); err != nil {
 		panic("tend: failed to load limits config: " + err.Error())
 	}

@@ -5,23 +5,8 @@
 # There is no runtime config file, so a binary behaves identically on every machine.
 
 log:
-  # Maximum log file size accepted, in megabytes.
-  # Files larger than this are rejected at input with ERR_INVALID_INPUT.
-  #
-  # What breaks with wrong values:
-  #   Too low:   legitimate log files from high-traffic services are rejected.
-  #              A busy nginx access log can reach 1 to 2 GB per rotation.
-  #   Too high:  very large files increase memory usage during analysis.
-  #              The entire file is read into memory for pattern detection.
-  #
-  # Common values (MB):
-  #   64     (light traffic: most app logs fit here)
-  #   256    (default: covers most production logs)
-  #   1024   (high-traffic services; watch memory usage)
-  max_file_size_mb: 256
-
   # Maximum number of lines read from a log file or stdin.
-  # Lines beyond this limit are silently truncated.
+  # Reading stops at this limit; later lines are not analyzed.
   #
   # What breaks with wrong values:
   #   Too low:   log files with many INFO lines may truncate before reaching errors.
@@ -46,13 +31,12 @@ health:
   #   30     (services behind a load balancer or with cold-start delays)
   timeout_seconds: 10
 
-  # Maximum number of targets that can be checked in a single run.
-  # Targets beyond this limit are silently ignored.
+  # Maximum number of targets checked at the same time.
+  # Every target is checked; targets beyond this number wait for a free slot.
   #
   # What breaks with wrong values:
-  #   Too low:   teams with many upstream dependencies cannot check all in one command.
-  #   Too high:  a very large target list increases goroutine count proportionally
-  #              (all checks run concurrently by default).
+  #   Too low:   long target lists take longer, because fewer checks run in parallel.
+  #   Too high:  a very large target list opens that many connections at once.
   max_targets: 50
 
 doc:
